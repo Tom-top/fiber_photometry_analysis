@@ -224,11 +224,11 @@ def generate_yticks(source, delta) :
     
     else :
         
-        y_max = (math.floor(y_max/round_factor))*round_factor
+        y_max = (math.ceil(y_max/round_factor))*round_factor
         
     if y_min >= 0 :
         
-        y_min = (math.ceil(y_min/round_factor))*round_factor
+        y_min = (math.floor(y_min/round_factor))*round_factor
     
     else :
         

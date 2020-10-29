@@ -69,11 +69,11 @@ def live_video_plot(video_clip, x_data, y_data, **kwargs) :
     # =============================================================================
     live_ax0 = live_figure.add_subplot(gs[0, :])
     
-    live_ax0.set_title("Behavior bouts : {0}".format(kwargs["behavior_to_segment"]), fontsize=kwargs["fst"])
+    live_ax0.set_title("Behavior bouts : {0}".format(kwargs["behavior_to_segment"]), fontsize=10.)
     live_ax0.set_xlim([x_data[0], x_data[0]+kwargs["video_photometry"]["display_threshold"]])
     live_ax0.set_yticks([0,1])
-    live_ax0.set_yticklabels(["Not behaving", "Behaving"], fontsize=kwargs["fsl"])
-    live_ax0.set_ylim(0, 1)
+    live_ax0.set_yticklabels(["Not behaving", "Behaving"], fontsize=10.)
+    live_ax0.set_ylim(-0.1,1.1)
     
     behavior_plot, = live_ax0.plot(x_data[0], y_data[0][0], '-', color="red", alpha=0.8, ms=1., lw=3.)
     
@@ -84,10 +84,10 @@ def live_video_plot(video_clip, x_data, y_data, **kwargs) :
     
     live_ax1.set_title(r"$\Delta$F/F", fontsize=kwargs["fst"])
     live_ax1.set_xlim([x_data[0], x_data[0]+kwargs["video_photometry"]["display_threshold"]])
-    live_ax1.set_xlabel("Time (s)", fontsize=kwargs["fsl"])
+    live_ax1.set_xlabel("Time (s)", fontsize=10.)
     y_min, y_max, round_factor = ut.generate_yticks(y_data[1], 0.1)
     live_ax1.set_yticks(np.arange(y_min, y_max+round_factor, round_factor))
-    live_ax1.set_yticklabels(["{:.0f}".format(i) for i in np.arange(y_min, y_max+round_factor, round_factor)], fontsize=kwargs["fsl"])
+    live_ax1.set_yticklabels(["{:.0f}".format(i) for i in np.arange(y_min, y_max+round_factor, round_factor)], fontsize=10.)
     live_ax1.set_ylim(y_min, y_max)
     
     dF_plot, = live_ax1.plot(x_data[0], y_data[1][0], '-', color="green", alpha=1., ms=1., lw=3.)
@@ -103,7 +103,9 @@ def live_video_plot(video_clip, x_data, y_data, **kwargs) :
                              [clips[1]]],
                              bg_color=[0, 0, 0])
     
-
     final_clip.write_videofile(os.path.join(kwargs["save_dir"],"Live_Video_Plot.mp4"), fps=kwargs["video_photometry"]["live_plot_fps"])
+    
+    # final_clip = final_clip.subclip(t_start=0, t_end=final_clip.duration-5)
+    # final_clip.write_gif(os.path.join(kwargs["save_dir"],"Live_Video_Plot.gif"), fps=kwargs["video_photometry"]["live_plot_fps"])
     plt.style.use("default")
     

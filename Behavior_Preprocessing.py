@@ -108,8 +108,8 @@ def trim_behavioral_data(start, end, **kwargs) :
              start < kwargs["video_end"]-half_time_lost, end < kwargs["video_end"]-half_time_lost]
     total_mask = reduce(np.logical_and, masks)
     
-    start = start[total_mask]
-    end = end[total_mask]
+    start = start[total_mask] - half_time_lost
+    end = end[total_mask] - half_time_lost
     
     return start, end
 

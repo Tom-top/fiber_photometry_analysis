@@ -11,16 +11,20 @@ import numpy as np
 import IO as io
 import Utilities as ut
 
-def set_parameters(files) :
+def set_parameters(files, allow_downsampling=True) :
     
     photometry_file_csv, video_file, behavior_automatic_file, behavior_manual_file, saving_directory = files #Assigning new variables for each file
     
-    recording_duration, recording_sampling_rate = io.get_recording_duration_and_sampling_rate(photometry_file_csv) #Get metadata from the photometry file
+    recording_duration, recording_sampling_rate, downsampling_factor = io.get_recording_duration_and_sampling_rate(photometry_file_csv, allow_downsampling=allow_downsampling) #Get metadata from the photometry file
     
     general_args = {"recording_sampling_rate" : recording_sampling_rate, #Sampling rate of the photometry system
                     "recording_duration" : recording_duration, #The time of recording according to the photometry dataset (s)
                     "smoothing_window" : int(recording_sampling_rate), #The window used to smooth the raw signal
                     "moving_average_window" : int(recording_sampling_rate)*60, #The window used to estimate the baseline of each signal
+                    "cropping_window" : int(recording_sampling_rate)*30, #The time to crop at the begining and the end of the video
+                    "down_sampling_factor_photometry" : downsampling_factor,
+                    "lambda" : 10**11, #Lambda parameter for the asymmetric least squares smoothing algorithm
+                    "p" : 0.01, #P parameter for the asymmetric least squares smoothing algorithm
                    }
     
     if video_file != None :
@@ -35,16 +39,17 @@ def set_parameters(files) :
     else :
         
         general_args["video"] = False #If no video
+        general_args["video_sampling_rate"] = 0 #The framerate of the video
         
-    plot_args = {"photometry_pp" : {"plots_to_display" : np.array([True, #raw_data
-                                                                   True, #smoothed
-                                                                   True, #compute baseline
-                                                                   True, #baseline correction
-                                                                   True, #standardization
-                                                                   True, #inter-channel regression
-                                                                   True, #channel alignement
-                                                                   True, #dFF
-                                                                   ]),
+    plot_args = {"photometry_pp" : {"plots_to_display" : {"raw_data" : True,
+                                                          "smoothing" : True,
+                                                          "baseline_determination" : True,
+                                                          "baseline_correction" : True,
+                                                          "standardization" : True,
+                                                          "inter-channel_regression" : True,
+                                                          "channel_alignement" : True,
+                                                          "dFF" : True,
+                                                            },
                                     "regression" : "Lasso", #The algorithm to use for the inter-channel regression step
                                     "standardize" : True, #If True = Standardizes the signals, otherwise skips this step
                                     "multicursor" : True, #If True = Displays multicursor on plots, otherwise not (Doesn't work properly)
@@ -52,12 +57,14 @@ def set_parameters(files) :
                                     "blue_laser" : "#0092ff", #Hex color of the 465nm laser trace
                                     },
                 "peri_event" : {"normalize_heatmap" : False, #If True, normalizes the heatmap of the peri-event plot
-                                "graph_distance_pre" : 10., #Graph distance (distance before the event started (s))
-                                "graph_distance_post" : 10., #Graph distance (distance after the event started (s))
+                                "graph_distance_pre" : 10, #Graph distance (distance before the event started (s))
+                                "graph_distance_post" : 10, #Graph distance (distance after the event started (s))
+                                "graph_auc_pre" : 2, #Distance used to compute the area under the curve before the event started (s)
+                                "graph_auc_post" : 2, #Distance used to compute the area under the curve after the event started (s)
                                 "resample_graph" : recording_sampling_rate,
                                 "resample_heatmap" : recording_sampling_rate/100,
-                                "style" : "individual",
-                                "individual_color" : False,
+                                "style" : "individual", #The style of the peri event plot. "individual" overlays each individual trace with the average. "average" only displays the average.
+                                "individual_color" : False, #This parameters asigns a different color to each individual trace (if style = "individual"), otherwise every trace is gray
                                 },
                 "video_photometry" : {"display_threshold" : int(5*general_args["video_sampling_rate"]), 
                                       "plot_acceleration" : general_args["recording_sampling_rate"],
@@ -70,7 +77,7 @@ def set_parameters(files) :
                 "fst" : 8., #fontsize of titles in the plot
                 "save" : True,
                 "save_dir" : saving_directory, #Direcotry were the plots will be saved
-                "extension" : "svg", #Extension of the saved plots   
+                "extension" : "png", #Extension of the saved plots   
                 }
     
     behavioral_segmentation_args = {"peak_merging_distance" : 7., #Peak Merging Distance

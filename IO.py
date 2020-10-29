@@ -54,8 +54,8 @@ def convert_to_npy(file, **kwargs) :
     
     if not kwargs["video"] :
         
-        x_adjusted = np.linspace(0, kwargs["video_duration"], len(x)) #adjusted time data to fit the "real" video time
-        x_target = np.arange(0, kwargs["video_duration"], 1/kwargs["recording_sampling_rate"]) #time to be extracted
+        x_adjusted = np.linspace(0, kwargs["recording_duration"], len(x)) #adjusted time data to fit the "real" video time
+        x_target = np.arange(0, kwargs["recording_duration"], 1/kwargs["recording_sampling_rate"]) #time to be extracted
         
     else :
         
@@ -78,7 +78,7 @@ def convert_to_npy(file, **kwargs) :
 
     return npy_file
     
-def get_recording_duration_and_sampling_rate(file) : 
+def get_recording_duration_and_sampling_rate(file, allow_downsampling=True) : 
     
     """Function that takes a csv file as an input, extract the time data from it,
     computes an estimate of the sampling rate and returns it
@@ -101,10 +101,26 @@ def get_recording_duration_and_sampling_rate(file) :
     sr =  round(len(x) / x[-1])
     
     if sr >= 250 :
+        print("\n")
         ut.print_in_color("The sampling rate of the recording is pretty high : {0}. We suggest to downsample the data using the pp.down_sample_signal function (250Hz)".format(sr), "RED")
-    print("Lenght of recording : {0}s, estimated sampling rate of the system : {1}".format(round(x[-1]), sr))
+        
+        if allow_downsampling :
+            
+            factor = int(sr/250)
+            sr = sr/factor
+            ut.print_in_color("Downsampling was enabled by user. New sampling rate of data : {0}Hz".format(sr), "GREEN")
+            
+        else :
+        
+            factor = None
+    else :
+        
+        factor = None
+            
+        
+    ut.print_in_color("Lenght of recording : {0}s, estimated sampling rate of the system : {1}".format(round(x[-1]), sr), "GREEN")
 
-    return round(x[-1]), sr
+    return round(x[-1]), sr, factor
 
 def get_video_duration_and_framerate(file) :
     

@@ -35,8 +35,8 @@ import Video_Plot as v_plot
 # Setting the working directory and the related files
 # =============================================================================
 
-experiment = "yymmdd"
-mouse = "test"
+experiment = "201109"
+mouse = "112b"
 
 working_directory = os.path.join(photometry_lib, "Test/{0}/{1}".format(experiment, mouse))
 
@@ -93,7 +93,7 @@ plot.check_dF_with_behavior([position_bouts], [length_bouts], color="blue", name
 # Merge behavioral bouts that are close together
 # =============================================================================
 
-args["peak_merging_distance"] = 1
+args["peak_merging_distance"] = 2
 position_bouts_merged, length_bouts_merged = bpp.merge_neighboring_bouts(position_bouts, **args)
 
 plot.check_dF_with_behavior([position_bouts_merged], [length_bouts_merged], color="blue", name="dF_&_merged_behavior", **args)
@@ -102,7 +102,7 @@ plot.check_dF_with_behavior([position_bouts_merged], [length_bouts_merged], colo
 # Detect major behavioral bouts based on size
 # =============================================================================
 
-args["minimal_bout_length"] = 2
+args["minimal_bout_length"] = 1
 position_major_bouts, length_major_bouts, position_seed_bouts, length_seed_bouts = bpp.detect_major_bouts(position_bouts_merged, **args) #Extracts major bouts from the data
 
 plot.check_dF_with_behavior([position_major_bouts, position_seed_bouts], [length_major_bouts, length_seed_bouts], color=["blue", "red"], name="dF_&_filtered_behavior", **args)
@@ -111,12 +111,12 @@ plot.check_dF_with_behavior([position_major_bouts, position_seed_bouts], [length
 # Extract photometry data around major bouts of behavior
 # =============================================================================
 
-args["peri_event"]["graph_distance_pre"] = 2
+args["peri_event"]["graph_distance_pre"] = 10
 args["peri_event"]["graph_distance_post"] = 10
 dF_around_bouts = bpp.extract_peri_event_photmetry_data(position_major_bouts, **args)
 dF_around_bouts_ordered, length_bouts_ordered = bpp.reorder_by_bout_size(dF_around_bouts, length_major_bouts)
 
-args["peri_event"]["style"] = "individual"
+args["peri_event"]["style"] = "average"
 args["peri_event"]["individual_color"] = False
 plot.peri_event_plot(dF_around_bouts_ordered, length_bouts_ordered, cmap="inferno", **args) #cividis, viridis
 

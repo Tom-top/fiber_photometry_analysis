@@ -41,13 +41,13 @@ def set_parameters(files, allow_downsampling=True) :
         general_args["video"] = False #If no video
         general_args["video_sampling_rate"] = 0 #The framerate of the video
         
-    plot_args = {"photometry_pp" : {"plots_to_display" : {"raw_data" : True,
-                                                          "smoothing" : True,
-                                                          "baseline_determination" : True,
-                                                          "baseline_correction" : True,
-                                                          "standardization" : True,
-                                                          "inter-channel_regression" : True,
-                                                          "channel_alignement" : True,
+    plot_args = {"photometry_pp" : {"plots_to_display" : {"raw_data" : False,
+                                                          "smoothing" : False,
+                                                          "baseline_determination" : False,
+                                                          "baseline_correction" : False,
+                                                          "standardization" : False,
+                                                          "inter-channel_regression" : False,
+                                                          "channel_alignement" : False,
                                                           "dFF" : True,
                                                             },
                                     "regression" : "Lasso", #The algorithm to use for the inter-channel regression step

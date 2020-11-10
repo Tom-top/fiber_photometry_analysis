@@ -175,9 +175,9 @@ def generate_xticks_and_labels(time) :
         elif n_mins >= 10 :
             
             step_ticks = (time - time%600)/10
-            xticks = np.arange(0, (time - (time%600))+step_ticks, step_ticks)
+            xticks = np.arange(0, (time - (time%60))+step_ticks, step_ticks)
             step_labels = step_ticks/60
-            xticklabels = np.arange(0, ((time - (time%600))/60)+step_labels, step_labels)
+            xticklabels = np.arange(0, ((time - (time%60))/60)+step_labels, step_labels)
             unit = "min"
         
     elif n_mins <= 1 :

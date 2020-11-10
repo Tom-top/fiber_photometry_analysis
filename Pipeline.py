@@ -35,8 +35,8 @@ import Video_Plot as v_plot
 # Setting the working directory and the related files
 # =============================================================================
 
-experiment = "yymmdd"
-mouse = "test"
+experiment = "201109"
+mouse = "112"
 
 working_directory = os.path.join(photometry_lib, "Test/{0}/{1}".format(experiment, mouse))
 

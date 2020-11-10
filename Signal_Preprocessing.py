@@ -392,7 +392,13 @@ def crop_signal(signal, window) :
     Returns :   sink (arr) = The cropped signal
     """
     
-    sink = signal[int(window):-int(window)]
+    if window == 0 :
+        
+        sink = signal
+        
+    else :
+    
+        sink = signal[int(window):-int(window)]
     
     return sink
 
@@ -641,7 +647,7 @@ def interchannel_regression(isosbestic, calcium, **kwargs) :
     if kwargs["photometry_pp"]["regression"] == "Lasso" :
     
         reg = Lasso(alpha=0.0001, precompute=True, max_iter=1000,
-                    positive=False, random_state=9999, selection='random')
+                    positive=True, random_state=9999, selection='random')
         
     else :
         

@@ -3,3 +3,4 @@ Test
 __pycache__
 .DS_Store
 *.pyc
+.idea

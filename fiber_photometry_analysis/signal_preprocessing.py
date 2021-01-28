@@ -7,18 +7,22 @@ Created on Mon Oct 19 10:08:31 2020
 """
 
 import os
-import matplotlib.pyplot as plt
-from matplotlib.widgets import MultiCursor
-plt.style.use("default")
+
 import numpy as np
-import datetime
+
 from scipy import signal
 from scipy import sparse
 from scipy.sparse.linalg import spsolve
-from scipy.interpolate import UnivariateSpline, interp1d
+from scipy.interpolate import interp1d
+
 from sklearn.linear_model import Lasso, LinearRegression
 
-import Utilities as ut
+import matplotlib.pyplot as plt
+from matplotlib.widgets import MultiCursor
+plt.style.use("default")
+
+from fiber_photometry_analysis import utilities as utils
+
 
 #########################################################################################################
 # Functions for signal processing
@@ -252,7 +256,7 @@ def extract_raw_data(file, **kwargs) :
     
     if kwargs["photometry_pp"]["plots_to_display"]["raw_data"] :
         
-        xticks, xticklabels, unit = ut.generate_xticks_and_labels(x_max)
+        xticks, xticklabels, unit = utils.generate_xticks_and_labels(x_max)
         
         fig = plt.figure(figsize=(10, 5), dpi=200.)
         ax0 = plt.subplot(211)
@@ -260,7 +264,7 @@ def extract_raw_data(file, **kwargs) :
         ax0.set_xticks(xticks)
         ax0.set_xticklabels(xticklabels, fontsize=kwargs["fsl"])
         ax0.set_xlim(0, x_max)
-        y_min, y_max, round_factor = ut.generate_yticks(isosbestic_adjusted, 0.1)
+        y_min, y_max, round_factor = utils.generate_yticks(isosbestic_adjusted, 0.1)
         ax0.set_yticks(np.arange(y_min, y_max+round_factor, round_factor))
         ax0.set_yticklabels(["{:.0f}".format(i) for i in np.arange(y_min, y_max+round_factor, round_factor)*1000], fontsize=kwargs["fsl"])
         ax0.set_ylim(y_min, y_max)
@@ -274,7 +278,7 @@ def extract_raw_data(file, **kwargs) :
         ax1.set_xticks(xticks)
         ax1.set_xticklabels(xticklabels, fontsize=kwargs["fsl"])
         ax1.set_xlim(0, x_max)
-        y_min, y_max, round_factor = ut.generate_yticks(calcium_adjusted, 0.1)
+        y_min, y_max, round_factor = utils.generate_yticks(calcium_adjusted, 0.1)
         ax1.set_yticks(np.arange(y_min, y_max+round_factor, round_factor))
         ax1.set_yticklabels(["{:.0f}".format(i) for i in np.arange(y_min, y_max+round_factor, round_factor)*1000], fontsize=kwargs["fsl"])
         ax1.set_ylim(y_min, y_max)
@@ -338,7 +342,7 @@ def smooth(x, isosbestic, calcium, **kwargs) :
     
     if kwargs["photometry_pp"]["plots_to_display"]["smoothing"] :
         
-        xticks, xticklabels, unit = ut.generate_xticks_and_labels(x_max)
+        xticks, xticklabels, unit = utils.generate_xticks_and_labels(x_max)
                 
         fig = plt.figure(figsize=(10, 5), dpi=200.)
         ax0 = plt.subplot(211)
@@ -346,7 +350,7 @@ def smooth(x, isosbestic, calcium, **kwargs) :
         ax0.set_xticks(xticks)
         ax0.set_xticklabels(xticklabels, fontsize=kwargs["fsl"])
         ax0.set_xlim(0, x_max)
-        y_min, y_max, round_factor = ut.generate_yticks(isosbestic_smoothed, 0.1)
+        y_min, y_max, round_factor = utils.generate_yticks(isosbestic_smoothed, 0.1)
         ax0.set_yticks(np.arange(y_min, y_max+round_factor, round_factor))
         ax0.set_yticklabels(["{:.0f}".format(i) for i in np.arange(y_min, y_max+round_factor, round_factor)*1000], fontsize=kwargs["fsl"])
         ax0.set_ylim(y_min, y_max)
@@ -360,7 +364,7 @@ def smooth(x, isosbestic, calcium, **kwargs) :
         ax1.set_xticks(xticks)
         ax1.set_xticklabels(xticklabels, fontsize=kwargs["fsl"])
         ax1.set_xlim(0, x_max)
-        y_min, y_max, round_factor = ut.generate_yticks(calcium_smoothed, 0.1)
+        y_min, y_max, round_factor = utils.generate_yticks(calcium_smoothed, 0.1)
         ax1.set_yticks(np.arange(y_min, y_max+round_factor, round_factor))
         ax1.set_yticklabels(["{:.0f}".format(i) for i in np.arange(y_min, y_max+round_factor, round_factor)*1000], fontsize=kwargs["fsl"])
         ax1.set_ylim(y_min, y_max)
@@ -442,7 +446,7 @@ def find_baseline_and_crop(x, isosbestic, calcium, method="als", **kwargs) :
     
     if kwargs["photometry_pp"]["plots_to_display"]["baseline_determination"] :
         
-        xticks, xticklabels, unit = ut.generate_xticks_and_labels(x_max)
+        xticks, xticklabels, unit = utils.generate_xticks_and_labels(x_max)
             
         fig = plt.figure(figsize=(10, 5), dpi=200.)
         ax0 = plt.subplot(211)
@@ -451,7 +455,7 @@ def find_baseline_and_crop(x, isosbestic, calcium, method="als", **kwargs) :
         ax0.set_xticks(xticks)
         ax0.set_xticklabels(xticklabels, fontsize=kwargs["fsl"])
         ax0.set_xlim(0, x_max)
-        y_min, y_max, round_factor = ut.generate_yticks(isosbestic, 0.1)
+        y_min, y_max, round_factor = utils.generate_yticks(isosbestic, 0.1)
         ax0.set_yticks(np.arange(y_min, y_max+round_factor, round_factor))
         ax0.set_yticklabels(["{:.0f}".format(i) for i in np.arange(y_min, y_max+round_factor, round_factor)*1000], fontsize=kwargs["fsl"])
         ax0.set_ylim(y_min, y_max)
@@ -466,7 +470,7 @@ def find_baseline_and_crop(x, isosbestic, calcium, method="als", **kwargs) :
         ax1.set_xticks(xticks)
         ax1.set_xticklabels(xticklabels, fontsize=kwargs["fsl"])
         ax1.set_xlim(0, x_max)
-        y_min, y_max, round_factor = ut.generate_yticks(calcium, 0.1)
+        y_min, y_max, round_factor = utils.generate_yticks(calcium, 0.1)
         ax1.set_yticks(np.arange(y_min, y_max+round_factor, round_factor))
         ax1.set_yticklabels(["{:.0f}".format(i) for i in np.arange(y_min, y_max+round_factor, round_factor)*1000], fontsize=kwargs["fsl"])
         ax1.set_ylim(y_min, y_max)
@@ -511,7 +515,7 @@ def baseline_correction(x, isosbestic, calcium, isosbestic_fc, calcium_fc, **kwa
     
     if kwargs["photometry_pp"]["plots_to_display"]["baseline_correction"] :
         
-        xticks, xticklabels, unit = ut.generate_xticks_and_labels(x_max)
+        xticks, xticklabels, unit = utils.generate_xticks_and_labels(x_max)
                 
         fig = plt.figure(figsize=(10, 5), dpi=200.)
         ax0 = plt.subplot(211)
@@ -520,7 +524,7 @@ def baseline_correction(x, isosbestic, calcium, isosbestic_fc, calcium_fc, **kwa
         ax0.set_xticks(xticks)
         ax0.set_xticklabels(xticklabels, fontsize=kwargs["fsl"])
         ax0.set_xlim(0, x_max)
-        y_min, y_max, round_factor = ut.generate_yticks(isosbestic_corrected, 0.1)
+        y_min, y_max, round_factor = utils.generate_yticks(isosbestic_corrected, 0.1)
         ax0.set_yticks(np.arange(y_min, y_max+round_factor, round_factor))
         ax0.set_yticklabels(["{:.0f}".format(i) for i in np.arange(y_min, y_max+round_factor, round_factor)*1000], fontsize=kwargs["fsl"])
         ax0.set_ylim(y_min, y_max)
@@ -534,7 +538,7 @@ def baseline_correction(x, isosbestic, calcium, isosbestic_fc, calcium_fc, **kwa
         ax1.set_xticks(xticks)
         ax1.set_xticklabels(xticklabels, fontsize=kwargs["fsl"])
         ax1.set_xlim(0, x_max)
-        y_min, y_max, round_factor = ut.generate_yticks(calcium_corrected, 0.1)
+        y_min, y_max, round_factor = utils.generate_yticks(calcium_corrected, 0.1)
         ax1.set_yticks(np.arange(y_min, y_max+round_factor, round_factor))
         ax1.set_yticklabels(["{:.0f}".format(i) for i in np.arange(y_min, y_max+round_factor, round_factor)*1000], fontsize=kwargs["fsl"])
         ax1.set_ylim(y_min, y_max)
@@ -579,7 +583,7 @@ def standardization(x, isosbestic, calcium, **kwargs) :
     
         if kwargs["photometry_pp"]["plots_to_display"]["standardization"] :
             
-            xticks, xticklabels, unit = ut.generate_xticks_and_labels(x_max)
+            xticks, xticklabels, unit = utils.generate_xticks_and_labels(x_max)
                     
             fig = plt.figure(figsize=(10, 5), dpi=200.)
             ax0 = plt.subplot(211)
@@ -588,7 +592,7 @@ def standardization(x, isosbestic, calcium, **kwargs) :
             ax0.set_xticks(xticks)
             ax0.set_xticklabels(xticklabels, fontsize=kwargs["fsl"])
             ax0.set_xlim(0, x_max)
-            y_min, y_max, round_factor = ut.generate_yticks(isosbestic_standardized, 0.1)
+            y_min, y_max, round_factor = utils.generate_yticks(isosbestic_standardized, 0.1)
             ax0.set_yticks(np.arange(y_min, y_max+round_factor, round_factor))
             ax0.set_yticklabels(["{:.0f}".format(i) for i in np.arange(y_min, y_max+round_factor, round_factor)], fontsize=kwargs["fsl"])
             ax0.set_ylim(y_min, y_max)
@@ -603,7 +607,7 @@ def standardization(x, isosbestic, calcium, **kwargs) :
             ax1.set_xticks(xticks)
             ax1.set_xticklabels(xticklabels, fontsize=kwargs["fsl"])
             ax1.set_xlim(0, x_max)
-            y_min, y_max, round_factor = ut.generate_yticks(calcium_standardized, 0.1)
+            y_min, y_max, round_factor = utils.generate_yticks(calcium_standardized, 0.1)
             ax1.set_yticks(np.arange(y_min, y_max+round_factor, round_factor))
             ax1.set_yticklabels(["{:.0f}".format(i) for i in np.arange(y_min, y_max+round_factor, round_factor)], fontsize=kwargs["fsl"])
             ax1.set_ylim(y_min, y_max)
@@ -624,7 +628,7 @@ def standardization(x, isosbestic, calcium, **kwargs) :
         
     else :
         
-        ut.print_in_color("\nThe standardization step in skipped. Parameter plot_args['photometry_pp']['standardize'] == False", "RED")
+        utils.print_in_color("\nThe standardization step in skipped. Parameter plot_args['photometry_pp']['standardize'] == False", "RED")
         isosbestic_standardized = isosbestic #standardization skipped
         calcium_standardized = calcium #standardization skipped
         
@@ -698,7 +702,7 @@ def align_channels(x, isosbestic, calcium, **kwargs) :
         p, = ax0.plot(x, isosbestic, alpha=0.8, c=kwargs["photometry_pp"]["purple_laser"], lw=kwargs["lw"], zorder=1)
         ax0.plot((0, x[-1]), (0, 0), "--", color="black", lw=kwargs["lw"]) #Creates a horizontal dashed line at y = 0 to signal the baseline
         
-        xticks, xticklabels, unit = ut.generate_xticks_and_labels(x_max)
+        xticks, xticklabels, unit = utils.generate_xticks_and_labels(x_max)
         ax0.set_xticks(xticks)
         ax0.set_xticklabels(xticklabels, fontsize=kwargs["fsl"])
         ax0.set_xlim(0, x_max)
@@ -706,7 +710,7 @@ def align_channels(x, isosbestic, calcium, **kwargs) :
         
         if kwargs["photometry_pp"]["standardize"] :
             
-            y_min, y_max, round_factor = ut.generate_yticks(np.concatenate((isosbestic,  calcium)), 0.1)
+            y_min, y_max, round_factor = utils.generate_yticks(np.concatenate((isosbestic, calcium)), 0.1)
             ax0.set_yticks(np.arange(y_min, y_max+round_factor, round_factor))
             ax0.set_yticklabels(["{:.0f}".format(i) for i in np.arange(y_min, y_max+round_factor, round_factor)], fontsize=kwargs["fsl"])
             ax0.set_ylim(y_min, y_max)
@@ -714,7 +718,7 @@ def align_channels(x, isosbestic, calcium, **kwargs) :
             
         else :
             
-            y_min, y_max, round_factor = ut.generate_yticks(np.concatenate((isosbestic,  calcium)), 0.1)
+            y_min, y_max, round_factor = utils.generate_yticks(np.concatenate((isosbestic, calcium)), 0.1)
             ax0.set_yticks(np.arange(y_min, y_max+round_factor, round_factor))
             ax0.set_yticklabels(["{:.0f}".format(i) for i in np.arange(y_min, y_max+round_factor, round_factor)*100], fontsize=kwargs["fsl"])
             ax0.set_ylim(y_min, y_max)
@@ -752,7 +756,7 @@ def dFF(x, isosbestic, calcium, **kwargs) :
     
     if kwargs["photometry_pp"]["plots_to_display"]["dFF"] :
         
-        xticks, xticklabels, unit = ut.generate_xticks_and_labels(max_x)
+        xticks, xticklabels, unit = utils.generate_xticks_and_labels(max_x)
         
         fig = plt.figure(figsize=(10, 3), dpi=200.)
         ax0 = plt.subplot(111)
@@ -765,7 +769,7 @@ def dFF(x, isosbestic, calcium, **kwargs) :
         
         if kwargs["photometry_pp"]["standardize"] :
             
-            y_min, y_max, round_factor = ut.generate_yticks(dFF, 0.1)
+            y_min, y_max, round_factor = utils.generate_yticks(dFF, 0.1)
             ax0.set_yticks(np.arange(y_min, y_max+round_factor, round_factor))
             ax0.set_yticklabels(["{:.0f}".format(i) for i in np.arange(y_min, y_max+round_factor, round_factor)], fontsize=kwargs["fsl"])
             ax0.set_ylim(y_min, y_max)
@@ -775,7 +779,7 @@ def dFF(x, isosbestic, calcium, **kwargs) :
             
         else :
             
-            y_min, y_max, round_factor = ut.generate_yticks(dFF, 0.1)
+            y_min, y_max, round_factor = utils.generate_yticks(dFF, 0.1)
             ax0.set_yticks(np.arange(y_min, y_max+round_factor, round_factor))
             ax0.set_yticklabels(["{:.0f}".format(i) for i in np.arange(y_min, y_max+round_factor, round_factor)*100], fontsize=kwargs["fsl"])
             ax0.set_ylim(y_min, y_max)

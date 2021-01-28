@@ -7,16 +7,20 @@ Created on Mon Oct 26 13:19:37 2020
 """
 
 import os
-import numpy as np
+
 import matplotlib.colors as col
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+
 plt.style.use("default")
-import seaborn as sns
-from sklearn.metrics import auc
+
 import scipy.stats as stats
 
-import Utilities as ut
+import seaborn as sns
+from sklearn.metrics import auc
+
+from fiber_photometry_analysis import utilities as utils
+
 
 def check_dF_with_behavior(position_bouts, length_bouts, color=["blue"], name="dF_&_behavioral_overlay", **kwargs):
     
@@ -44,13 +48,13 @@ def check_dF_with_behavior(position_bouts, length_bouts, color=["blue"], name="d
     ax0.plot(kwargs["photometry_data"]["dFF"]["x"], kwargs["photometry_data"]["dFF"]["dFF"], color="green", lw=kwargs["lw"])
     ax0.plot(0,  kwargs["video_end"]-kwargs["photometry_data"]["time_lost"], (0, 0), "--", color="blue", lw=kwargs["lw"]) #Creates a horizontal dashed line at y = 0 to signal the baseline
     
-    xticks, xticklabels, unit = ut.generate_xticks_and_labels(kwargs["photometry_data"]["dFF"]["x"][-1])
+    xticks, xticklabels, unit = utils.generate_xticks_and_labels(kwargs["photometry_data"]["dFF"]["x"][-1])
     ax0.set_xticks(xticks)
     ax0.set_xticklabels(xticklabels, fontsize=kwargs["fsl"])
     ax0.set_xlim(0, kwargs["photometry_data"]["dFF"]["x"][-1])
     ax0.set_xlabel("Time ({0})".format(unit), fontsize=kwargs["fsl"])
     
-    y_min, y_max, round_factor = ut.generate_yticks(kwargs["photometry_data"]["dFF"]["dFF"], 0.1)
+    y_min, y_max, round_factor = utils.generate_yticks(kwargs["photometry_data"]["dFF"]["dFF"], 0.1)
     ax0.set_yticks(np.arange(y_min, y_max+round_factor, round_factor))
     ax0.set_ylim(y_min, y_max)
     
@@ -128,7 +132,7 @@ def peri_event_plot(data_around_major_bouts, length_major_bouts, cmap="inferno",
         ax0.fill_between(x_range, mean_data_around_bouts, (mean_data_around_bouts - std_data_around_bouts),\
                          color="green", alpha=0.1)
         
-        y_min, y_max, round_factor = ut.generate_yticks(data_around_major_bouts.flatten(), 0.2)
+        y_min, y_max, round_factor = utils.generate_yticks(data_around_major_bouts.flatten(), 0.2)
         y_range = y_max - y_min
         ax0.set_yticks(np.arange(y_min, y_max+round_factor, round_factor))
         ax0.set_yticklabels(["{:.0f}".format(i) for i in np.arange(y_min, y_max+round_factor, round_factor)], fontsize=kwargs["fsl"])
@@ -144,7 +148,7 @@ def peri_event_plot(data_around_major_bouts, length_major_bouts, cmap="inferno",
         ax0.fill_between(x_range, mean_data_around_bouts, (mean_data_around_bouts - std_data_around_bouts),\
                          color="green", alpha=0.1)
         
-        y_min, y_max, round_factor = ut.generate_yticks(np.concatenate((mean_data_around_bouts + std_data_around_bouts, mean_data_around_bouts - std_data_around_bouts)), 0.2)
+        y_min, y_max, round_factor = utils.generate_yticks(np.concatenate((mean_data_around_bouts + std_data_around_bouts, mean_data_around_bouts - std_data_around_bouts)), 0.2)
         y_range = y_max - y_min
         ax0.set_yticks(np.arange(y_min, y_max+round_factor, round_factor))
         ax0.set_yticklabels(["{:.0f}".format(i) for i in np.arange(y_min, y_max+round_factor, round_factor)], fontsize=kwargs["fsl"])
@@ -284,7 +288,7 @@ def peri_event_bar_plot(data_around_major_bouts, **kwargs) :
     ax0.plot((1,1), (y_max+y_max*0.05, y_max+y_max*0.1), lw=1, color="black")
     ax0.plot((0,1), (y_max+y_max*0.1, y_max+y_max*0.1), lw=1, color="black")
     
-    ut.print_in_color("The comparison of AUC for before and after the behavioral initiation is : {0}".format(pval), "GREEN")
+    utils.print_in_color("The comparison of AUC for before and after the behavioral initiation is : {0}".format(pval), "GREEN")
     
     if pval > 0.05 and pval >= 0.01 :
         

@@ -7,28 +7,25 @@ Created on Fri Dec  6 11:30:37 2019
 @author: thomas.topilko
 """
 
-import os;
-import pandas as pd;
-import matplotlib.pyplot as plt;
-import matplotlib.animation as animation;
-import matplotlib.patches as patches;
-import numpy as np;
-import datetime;
-from matplotlib.widgets import MultiCursor;
+import os
 
-import moviepy.editor as mpy;
-from moviepy.video.io.bindings import mplfig_to_npimage;
-from moviepy.editor import VideoFileClip, VideoClip, clips_array,ImageSequenceClip;
+import numpy as np
 
-TMTDir = "/home/thomas.topilko/Documents/TopMouseTracker";
-if not os.getcwd() == TMTDir :
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+
+import moviepy.editor as mpy
+from moviepy.video.io.bindings import mplfig_to_npimage
+from moviepy.editor import clips_array
+
+mouse_tracker_dir = "/home/thomas.topilko/Documents/TopMouseTracker"
+if not os.getcwd() == mouse_tracker_dir:
+    os.chdir(mouse_tracker_dir)
     
-    os.chdir(TMTDir);
-    
-import Scripts.Tomek_Photometry_Functions as fc;
+from fiber_photometry_analysis import photo_funcs as photo_funcs
 
-experiment = 201020;
-mouse = "301";
+experiment = 201020
+mouse = "301"
 
 workDir = "/home/thomas.topilko/Desktop/Alba_Analysis/{0}/{1}".format(experiment, mouse);
 
@@ -59,7 +56,7 @@ endVideo = 0*3600+6*60+53; #When to end the video
 videoLength = 0*3600+6*60+53; #The length of the video ;; FOR TIME COMPRESSION
 
 f = photometryFileCSV; #photometryFileCSV
-photometryFileNPY = fc.ConvertPhotometryData(f); #Convert CSV file to NPY if needed photometryFileCSV
+photometryFileNPY = photo_funcs.ConvertPhotometryData(f); #Convert CSV file to NPY if needed photometryFileCSV
 photometryFileNPY = "/home/thomas.topilko/Desktop/Alba_Analysis/201020/301/201020-301_0.npy"
 
 #fc.checkTimeShift(photometryFileNPY, SRD, plot=True, label="Decimation = 1 ; Video");
@@ -75,9 +72,9 @@ args = {"lw" : 1., #linewidth in plot
         "which" : [False, False, False, False, False, True] #Raw, Corrected, Standardized, Fit, Aligned, dF
         };
 
-rawX, rawIsosbestic, rawCalcium, dF = fc.LoadPhotometryData(photometryFileNPY, SRD,\
-                                                            startVideo, endVideo, videoLength, rollAvg, optPlots=True,\
-                                                            recompute=True, plotargs=args); #Loads the NPY data
+rawX, rawIsosbestic, rawCalcium, dF = photo_funcs.LoadPhotometryData(photometryFileNPY, SRD, \
+                                                                     startVideo, endVideo, videoLength, rollAvg, optPlots=True, \
+                                                                     recompute=True, plotargs=args); #Loads the NPY data
                                                        
 #%%
 ###############################################################################
@@ -103,7 +100,7 @@ fps = videoClipCropped.fps;
 print("\n");
 print("Reading Cotton data");
 
-rawCotton, Cotton = fc.LoadTrackingData(cottonFile, fps, startVideo, endVideo);
+rawCotton, Cotton = photo_funcs.LoadTrackingData(cottonFile, fps, startVideo, endVideo);
 
 """Peak Detection"""
 PAT = 0.7; #Peak Amplitude Threshold
@@ -111,15 +108,15 @@ PTPD = 1; #Peak to Peak Distance
 PMD = 7.; #Peak Merging Distance
 RS = 1./fps; #Raster Spread
 
-peaks, posPeaks = fc.DetectRawPeaks(Cotton, PAT, PTPD);
-peaksMerged, peaksPosMerged  = fc.MergeClosePeaks(peaks, posPeaks, PMD);
+peaks, posPeaks = photo_funcs.DetectRawPeaks(Cotton, PAT, PTPD);
+peaksMerged, peaksPosMerged  = photo_funcs.MergeClosePeaks(peaks, posPeaks, PMD);
 
 """Major peak detection"""
 DBE = 2; #Distance Between Events 2
 BL = 0; #Behavioral Bout Length
 GD = 40.; #Graph distance (distance before+after the event started)
 
-mPeaks, mPosPeaks, mLengthPeaks, seeds, posSeeds = fc.DetectMajorBouts(peaksMerged, DBE, BL, GD);
+mPeaks, mPosPeaks, mLengthPeaks, seeds, posSeeds = photo_funcs.DetectMajorBouts(peaksMerged, DBE, BL, GD);
 
 #fc.PeakPlot(posPeaks, peaksPosMerged, mPosPeaks, posSeeds, multiPlot=True, timeFrame=[], save=False);
 
@@ -131,11 +128,11 @@ mPeaks, mPosPeaks, mLengthPeaks, seeds, posSeeds = fc.DetectMajorBouts(peaksMerg
 """Peak Detection"""
 PMD = 7.; #Peak Merging Distance
 
-peaks, posPeaks = fc.extract_manual_bouts(manualFile, endVideo, "Touching")
+peaks, posPeaks = photo_funcs.extract_manual_bouts(manualFile, endVideo, "Touching")
 peaks_c = peaks[int(time_lost/2) : -int(time_lost/2)]
 posPeaks_c = np.array(posPeaks)+(int(time_lost/2)/sampling_rate)
 #peaksMerged = fc.extractManualBehavior(Cotton, manualFile);
-peaksMerged, peaksPosMerged  = fc.MergeClosePeaks(peaks, posPeaks, PMD);
+peaksMerged, peaksPosMerged  = photo_funcs.MergeClosePeaks(peaks, posPeaks, PMD);
 
 """Major peak detection"""
 DBE = 0; #Distance Between Events 2
@@ -143,7 +140,7 @@ BL = 0; #Behavioral Bout Length
 GD = 10.; #Graph distance (distance before+after the event started)
 
 #mPeaks, mPosPeaks, mLengthPeaks, seeds, posSeeds = fc.DetectMajorBouts(peaksMerged, DBE, BL, GD);
-mPeaks, mPosPeaks, mLengthPeaks, seeds, posSeeds = fc.DetectMajorBouts(peaks_c, DBE, BL, GD);
+mPeaks, mPosPeaks, mLengthPeaks, seeds, posSeeds = photo_funcs.DetectMajorBouts(peaks_c, DBE, BL, GD);
 
 fig = plt.figure()
 ax0 = plt.subplot(2, 1, 1)
@@ -152,7 +149,7 @@ ax1 = plt.subplot(2, 1, 2)
 ax1.plot(peaks_c)
 ax1.plot(mPeaks)
 
-fc.PeakPlot(posPeaks, peaksPosMerged, mPosPeaks, posSeeds, multiPlot=True, timeFrame=[], save=False);
+photo_funcs.PeakPlot(posPeaks, peaksPosMerged, mPosPeaks, posSeeds, multiPlot=True, timeFrame=[], save=False);
 
 #%%
 ###############################################################################
@@ -166,9 +163,9 @@ fc.PeakPlot(posPeaks, peaksPosMerged, mPosPeaks, posSeeds, multiPlot=True, timeF
 boutThresh = 0; #Behavioral Bout Length Threshold for display
 
 #dataAroundPeaks = fc.ExtractCalciumDataWhenBehaving(mPosPeaks, dF, GD, SRD, resample=1)
-dataAroundPeaks = fc.ExtractCalciumDataWhenBehaving(mPosPeaks, dF, GD, SRD, resample=1)
-dataAroundPeaksFiltered, mLengthPeaksFiltered, mPosPeaksFiltered = fc.filterShortBouts(dataAroundPeaks, mLengthPeaks, mPosPeaks, boutThresh);
-dataAroundPeaksOrdered, mLengthPeaksOrdered, mPosPeaksOrdered = fc.reorderByBoutSize(dataAroundPeaksFiltered, mLengthPeaksFiltered, mPosPeaksFiltered);
+dataAroundPeaks = photo_funcs.ExtractCalciumDataWhenBehaving(mPosPeaks, dF, GD, SRD, resample=1)
+dataAroundPeaksFiltered, mLengthPeaksFiltered, mPosPeaksFiltered = photo_funcs.filterShortBouts(dataAroundPeaks, mLengthPeaks, mPosPeaks, boutThresh);
+dataAroundPeaksOrdered, mLengthPeaksOrdered, mPosPeaksOrdered = photo_funcs.reorderByBoutSize(dataAroundPeaksFiltered, mLengthPeaksFiltered, mPosPeaksFiltered);
 GDb, GDf = GD, GD;
 
 #cmap = gnuplot, twilight, inferno, viridis
@@ -186,8 +183,8 @@ ax0.set_ylim(Min+Min*0.1, Max+Max*0.1)
 #plt.savefig(os.path.join("/home/thomas.topilko/Desktop", "Photometry_With_Peaks_Walking.png"), dpi=300.)
 #plt.savefig(os.path.join("/home/thomas.topilko/Desktop", "Photometry_With_Peaks_Walking.svg"), dpi=300.)
 
-fc.PeriEventPlot(dataAroundPeaksOrdered, mLengthPeaksOrdered, SRD, SRD, GD, GDf, GDb, SRD, save=False,\
-                 showStd=True, fileNameLabel="_All", cmap="inferno", lowpass=(0,0));
+photo_funcs.PeriEventPlot(dataAroundPeaksOrdered, mLengthPeaksOrdered, SRD, SRD, GD, GDf, GDb, SRD, save=False, \
+                          showStd=True, fileNameLabel="_All", cmap="inferno", lowpass=(0,0));
 
 #%%
 
@@ -316,7 +313,7 @@ yData = [newCotton, [], [], dF];
 
 video_clip_cropped_in_time = videoClipCropped.subclip(t_start=int(time_lost/2), t_end=videoClipCropped.duration-int(time_lost/2));
                                                       
-import Utilities as ut
+import utilities as ut
 print(ut.h_m_s(videoClipCropped.duration))
 print(ut.h_m_s(len(x2)/sampling_rate))
 print(ut.h_m_s(len(yData[0])/sampling_rate))
@@ -353,10 +350,10 @@ peData = [x for sublist in peData for x in sublist];
 leData = [x for sublist in leData for x in sublist];
 posData = [x for sublist in posData for x in sublist];
 
-peData, leData, posData = fc.filterShortBouts(peData, leData, posData, boutThresh);
-peData, leData, posData = fc.reorderByBoutSize(peData, leData, posData);
+peData, leData, posData = photo_funcs.filterShortBouts(peData, leData, posData, boutThresh);
+peData, leData, posData = photo_funcs.reorderByBoutSize(peData, leData, posData);
     
-fc.PeriEventPlot(peData, leData, SRD, SRD, GD, GDf, GDb, SRD, save=False,\
-                 showStd=True, fileNameLabel="_All", cmap="inferno",\
-                 lowpass=(2,2), norm=True)                  
+photo_funcs.PeriEventPlot(peData, leData, SRD, SRD, GD, GDf, GDb, SRD, save=False, \
+                          showStd=True, fileNameLabel="_All", cmap="inferno", \
+                          lowpass=(2,2), norm=True)
                     

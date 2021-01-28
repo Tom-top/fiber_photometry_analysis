@@ -7,12 +7,15 @@ Created on Mon Oct 19 13:15:03 2020
 """
 
 import os
+
 import pandas as pd
 import numpy as np
+
 import moviepy.editor as mpy
 
-import Utilities as ut
-import Signal_Preprocessing as pp
+from fiber_photometry_analysis import utilities as utils
+from fiber_photometry_analysis import signal_preprocessing as preproc
+
 
 def convert_to_npy(file, **kwargs) :
     
@@ -63,10 +66,10 @@ def convert_to_npy(file, **kwargs) :
         x_target = np.arange(kwargs["video_start"], kwargs["video_end"], 1/kwargs["recording_sampling_rate"]) #time to be extracted
         
     isosbestic = np.array(photometry_data_transposed[1]) #isosbestic data
-    isosbestic_adjusted = pp.adjust_signal_to_video_time(x_adjusted, x_target, isosbestic) #data compressed in time
+    isosbestic_adjusted = preproc.adjust_signal_to_video_time(x_adjusted, x_target, isosbestic) #data compressed in time
     
     calcium = np.array(photometry_data_transposed[2]) #calcium data
-    calcium_adjusted = pp.adjust_signal_to_video_time(x_adjusted, x_target, calcium) #data compressed in time
+    calcium_adjusted = preproc.adjust_signal_to_video_time(x_adjusted, x_target, calcium) #data compressed in time
     
     x_final = x_target - x_target[0]
 
@@ -102,13 +105,13 @@ def get_recording_duration_and_sampling_rate(file, allow_downsampling=True) :
     
     if sr >= 250 :
         print("\n")
-        ut.print_in_color("The sampling rate of the recording is pretty high : {0}. We suggest to downsample the data using the pp.down_sample_signal function (250Hz)".format(sr), "RED")
+        utils.print_in_color("The sampling rate of the recording is pretty high : {0}. We suggest to downsample the data using the pp.down_sample_signal function (250Hz)".format(sr), "RED")
         
         if allow_downsampling :
             
             factor = int(sr/250)
             sr = sr/factor
-            ut.print_in_color("Downsampling was enabled by user. New sampling rate of data : {0}Hz".format(sr), "GREEN")
+            utils.print_in_color("Downsampling was enabled by user. New sampling rate of data : {0}Hz".format(sr), "GREEN")
             
         else :
         
@@ -118,7 +121,7 @@ def get_recording_duration_and_sampling_rate(file, allow_downsampling=True) :
         factor = None
             
         
-    ut.print_in_color("Lenght of recording : {0}s, estimated sampling rate of the system : {1}".format(round(x[-1]), sr), "GREEN")
+    utils.print_in_color("Lenght of recording : {0}s, estimated sampling rate of the system : {1}".format(round(x[-1]), sr), "GREEN")
 
     return round(x[-1]), sr, factor
 

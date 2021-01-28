@@ -6,11 +6,13 @@ Created on Fri Oct 23 16:16:29 2020
 @author: thomas.topilko
 """
 
-import numpy as np
-import pandas as pd
 from functools import reduce
 
-import Utilities as ut
+import numpy as np
+import pandas as pd
+
+from fiber_photometry_analysis import utilities as utils
+
 
 def extract_behavior_data(file, **kwargs) :
     
@@ -45,7 +47,7 @@ def estimate_minimal_resolution(start, end) :
     
     minimal_resolution = 1/min(end-start)
     
-    ut.print_in_color("The smallest behavioral bout is {0}s long".format(1/minimal_resolution), "GREEN")
+    utils.print_in_color("The smallest behavioral bout is {0}s long".format(1 / minimal_resolution), "GREEN")
     
     return minimal_resolution
 
@@ -86,7 +88,7 @@ def create_bool_map(start, end, **kwargs) :
             bool_map.append(True)
       
     print("\n")
-    ut.print_in_color("Behavioral data extracted. Behavior = {0}".format(kwargs["behavior_to_segment"]), "GREEN")
+    utils.print_in_color("Behavioral data extracted. Behavior = {0}".format(kwargs["behavior_to_segment"]), "GREEN")
     
     return bool_map
 
@@ -134,7 +136,7 @@ def extract_manual_bouts(start, end, **kwargs) :
         length_bouts.append(e-s)
       
     print("\n")
-    ut.print_in_color("Behavioral data extracted. Behavior = {0}".format(kwargs["behavior_to_segment"]), "GREEN")
+    utils.print_in_color("Behavioral data extracted. Behavior = {0}".format(kwargs["behavior_to_segment"]), "GREEN")
     
     return position_bouts, length_bouts
 
@@ -184,7 +186,7 @@ def merge_neighboring_bouts(position_bouts, **kwargs) :
                 length_bouts_merged.append(next_bout[1] - next_bout[0])
                 
     print("\n")
-    ut.print_in_color("Merged neighboring peaks that were closer than {0}s away".format(kwargs["peak_merging_distance"]), "GREEN")
+    utils.print_in_color("Merged neighboring peaks that were closer than {0}s away".format(kwargs["peak_merging_distance"]), "GREEN")
                 
     return position_bouts_merged, length_bouts_merged
 

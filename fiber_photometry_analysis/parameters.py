@@ -6,10 +6,9 @@ Created on Fri Oct 23 14:41:56 2020
 @author: thomas.topilko
 """
 
-import numpy as np
+from fiber_photometry_analysis import utilities as utils
+from fiber_photometry_analysis import io
 
-import IO as io
-import Utilities as ut
 
 def set_parameters(files, allow_downsampling=True) :
     
@@ -88,12 +87,12 @@ def set_parameters(files, allow_downsampling=True) :
     
     print("\n")
     
-    ut.print_in_color("Parameters loaded successfully", "GREEN")
+    utils.print_in_color("Parameters loaded successfully", "GREEN")
     
     print("\n")
     
-    ut.print_in_color("If you like to change some of the parameters you can directly modify them in\n\
-the 'Parameters.py' file or change them by calling : 'args['arg'] = new_value' with\n\
+    utils.print_in_color("If you like to change some of the parameters you can directly modify them in\n\
+the 'parameters.py' file or change them by calling : 'args['arg'] = new_value' with\n\
 arg corresponding to the argument you desire to change, and new_value the new value\n\
 of the argument in question", "GREEN")
     

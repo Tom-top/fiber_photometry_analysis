@@ -7,8 +7,10 @@ Created on Mon Oct 19 10:02:35 2020
 """
 
 import os
-import numpy as np
 import math
+
+import numpy as np
+
 
 colors = { "GREEN" : '\33[32m',
            "YELLOW" : '\033[1;33;48m',
@@ -17,6 +19,7 @@ colors = { "GREEN" : '\33[32m',
            "BLINK2" : '\33[6m',
            "END" : '\033[1;37;0m',
            }
+
 
 def print_in_color(message, color) :
     

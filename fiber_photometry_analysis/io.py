@@ -76,45 +76,45 @@ def convert_to_npy(file, **kwargs):
     return npy_file_path
 
 
-def get_recording_duration_and_sampling_rate(file, allow_downsampling=True):
-    """Function that takes a csv file as an input, extract the time data from it,
-    computes an estimate of the sampling rate and returns it
-    
-    Args :      file (str) = the path to the csv file
-    
-    Returns :   sr (float) = The estimate sampling rate of the photometry system
-    """
-    if not os.path.exists(file):
-        raise RuntimeError("{0} file doesn't exist !".format(file))
+    def get_recording_duration_and_sampling_rate(file, allow_downsampling=True):
+        """Function that takes a csv file as an input, extract the time data from it,
+        computes an estimate of the sampling rate and returns it
         
-    photometry_sheet = pd.read_csv(file, header=1, usecols=[0])  # Load the data
-    photometry_data_npy = photometry_sheet.to_numpy()  # Convert to numpy for speed
-    photometry_data_transposed = np.transpose(photometry_data_npy)  # Transpose data
-    
-    x = np.array(photometry_data_transposed[0])  # time data
-    
-    sr = round(len(x) / x[-1])
-    
-    if sr >= 250:
-        print("\n")
-        utils.print_in_color("The sampling rate of the recording is pretty high : {0}. "
-                             "We suggest to downsample the data using the pp.down_sample_signal function (250Hz)"
-                             .format(sr), "RED")
+        Args :      file (str) = the path to the csv file
         
-        if allow_downsampling:
-            factor = int(sr/250)
-            sr = sr/factor
-            utils.print_in_color("Downsampling was enabled by user. New sampling rate of data : {0}Hz"
-                                 .format(sr), "GREEN")
+        Returns :   sr (float) = The estimate sampling rate of the photometry system
+        """
+        if not os.path.exists(file):
+            raise RuntimeError("{0} file doesn't exist !".format(file))
+            
+        photometry_sheet = pd.read_csv(file, header=1, usecols=[0])  # Load the data
+        photometry_data_npy = photometry_sheet.to_numpy()  # Convert to numpy for speed
+        photometry_data_transposed = np.transpose(photometry_data_npy)  # Transpose data
+        
+        x = np.array(photometry_data_transposed[0])  # time data
+        
+        sr = round(len(x) / x[-1])
+        
+        if sr >= 250:
+            print("\n")
+            utils.print_in_color("The sampling rate of the recording is pretty high : {0}. "
+                                 "We suggest to downsample the data using the pp.down_sample_signal function (250Hz)"
+                                 .format(sr), "RED")
+            
+            if allow_downsampling:
+                factor = int(sr/250)
+                sr = sr/factor
+                utils.print_in_color("Downsampling was enabled by user. New sampling rate of data : {0}Hz"
+                                     .format(sr), "GREEN")
+            else:
+                factor = None
         else:
             factor = None
-    else:
-        factor = None
-
-    utils.print_in_color("Lenght of recording : {0}s, estimated sampling rate of the system : {1}"
-                         .format(round(x[-1]), sr), "GREEN")
-    return round(x[-1]), sr, factor
-
+    
+        utils.print_in_color("Lenght of recording : {0}s, estimated sampling rate of the system : {1}"
+                             .format(round(x[-1]), sr), "GREEN")
+        return round(x[-1]), sr, factor
+    
 
 def get_video_duration_and_framerate(file):
     if not os.path.exists(file):

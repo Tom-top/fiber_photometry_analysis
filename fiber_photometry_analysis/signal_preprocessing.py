@@ -86,50 +86,6 @@ def smooth_signal(source, window_len=10, window='flat'):
     return sink
 
 
-def trailing_moving_average(source, window=1):
-    """Function that takes an 1D array as an argument and returns its trailing
-    moving average by computing the unweighted mean for the previous n = window data
-    
-    [[WARNING] This shifts the mean in time, use "centered_moving_average" for an aligned moving average]
-    
-    Args :      source (np.array) = The signal for which the moving average has to be computed
-                window (int) = The window of values that the algorithm takes to compute the moving average
-    
-    Returns :   sink (np.array) = The trailing moving average of the input signal
-    """
-    
-    source = np.array(source)
-    if len(source.shape) == 1:
-        cumsum = np.cumsum(source)
-        sink = (cumsum[window:] - cumsum[:-window]) / float(window)
-        source = source[window:]
-        return source, sink
-    else:
-        raise RuntimeError("The input array has too many dimensions. Input : {0}D, Requiered : 1D"
-                           .format(len(source.shape)))
-
-
-def centered_moving_average(source, window=1):
-    """Function that takes an 1D array as an argument and returns its centered
-    moving average by computing the unweighted mean for the previous and next n = window data
-    
-    Args :      source (np.array) = The signal for which the moving average has to be computed
-                window (int) = The window of values that the algorithm takes to compute the moving average
-    
-    Returns :   sink (np.array) = The centered moving average of the input signal
-    """
-    
-    source = np.array(source)
-    
-    if len(source.shape) == 1:
-        cumsum = np.cumsum(source)
-        sink = (cumsum[window:] - cumsum[:-window]) / float(window)
-        source = source[int(window/2):-int(window/2)]
-        return source, sink
-    else:
-        raise RuntimeError("The input array has too many dimensions. Input : {0}D, Requiered : 1D".format(len(source.shape)))
-
-
 def baseline_asymmetric_least_squares_smoothing(source, l, p, n_iter=10):
     """Algorithm using Asymmetric Least Squares Smoothing to determine the baseline
     of the signal. Code inspired by the paper from : P. Eilers and H. Boelens in 2005
@@ -156,43 +112,6 @@ def baseline_asymmetric_least_squares_smoothing(source, l, p, n_iter=10):
         w = p * (source > sink) + (1-p) * (source < sink)
         
     return sink
-
-
-def low_pass_filter(source, sr, cutoff_freq, order):
-    """Function that takes an 1D array as an argument and returns the filtered 
-    signal following the application of a low pass filter with a cutoff frequency = cutoff_freq and
-    order = order
-    
-    Args :      source (np.array) = The signal to be filtered
-                sr (int) = The sampling rate of the signal
-                cutoff_freq (int) = the cutoff frequency of the lowpass filter
-                order (int) = the order of the lowpass filter
-                
-    
-    Returns :   sink (np.array) = The centered moving average of the input signal
-    """
-    
-    for name, arg in zip(("sr", "cutoff_freq", "order"), (sr, cutoff_freq, order)):
-        
-        if not isinstance(arg, int):
-            raise RuntimeError("The argument {0} is of incorrect type. Input : {1}, Requiered : int"
-                               .format(name, type(arg)))
-    
-    source = np.array(source)
-    
-    if len(source.shape) == 1:
-        nyq = sr / 2  # The nyquist frequency
-        normalized_cutoff = cutoff_freq / nyq
-        
-        z, p, k = signal.butter(order, normalized_cutoff, output="zpk")
-        lesos = signal.zpk2sos(z, p, k)
-        filtered = signal.sosfilt(lesos, source)
-        sink = np.array(filtered)
-        
-        return sink
-    else:
-        raise RuntimeError("The input array has too many dimensions. Input : {0}D, Requiered : 1D"
-                           .format(len(source.shape)))
 
 
 def adjust_signal_to_video_time(time_video, time_final, source):
@@ -390,7 +309,7 @@ def find_baseline_and_crop(x, isosbestic, calcium, method="als", **kwargs):
     """
     
     print("\nStarting baseline computation for Isosbestic and Calcium signals !")
-    
+    # TODO : remove method argument
     if method == "als":
         x = crop_signal(x, int(kwargs["cropping_window"]))
         x = x - x[0]
@@ -398,19 +317,14 @@ def find_baseline_and_crop(x, isosbestic, calcium, method="als", **kwargs):
         calcium = crop_signal(calcium, int(kwargs["cropping_window"]))
         isosbestic_fc = baseline_asymmetric_least_squares_smoothing(isosbestic, kwargs["lambda"], kwargs["p"])
         calcium_fc = baseline_asymmetric_least_squares_smoothing(calcium, kwargs["lambda"], kwargs["p"])
-    elif method == "ma":
-        x = crop_signal(x, int(kwargs["moving_average_window"]/2))
-        x = x - x[0]
-        isosbestic, isosbestic_fc = centered_moving_average(isosbestic, window=kwargs["moving_average_window"]) #moving average for isosbestic data
-        calcium, calcium_fc = centered_moving_average(calcium, window=kwargs["moving_average_window"]) #moving average for calcium data
-        
+
     x_max = x[-1]
     # print("Data length : {0}".format(ut.h_m_s(x_max, add_tags=True)))
     
     if kwargs["photometry_pp"]["plots_to_display"]["baseline_determination"]:
         xticks, xticklabels, unit = utils.generate_xticks_and_labels(x_max)
             
-        fig = plt.figure(figsize=(10, 5), dpi=200.)
+        plt.figure(figsize=(10, 5), dpi=200.)
         ax0 = plt.subplot(211)
         p, = ax0.plot(x, isosbestic, alpha=0.8, c=kwargs["photometry_pp"]["purple_laser"], lw=kwargs["lw"])
         ma, = ax0.plot(x, isosbestic_fc, alpha=0.8, c="orange", lw=2)

@@ -10,35 +10,33 @@ from fiber_photometry_analysis import utilities as utils
 from fiber_photometry_analysis import io
 
 
-def set_parameters(files, allow_downsampling=True) :
+def set_parameters(files, allow_downsampling=True):
+    photometry_file_csv, video_file, behavior_automatic_file, behavior_manual_file, saving_directory = files  # Assigning new variables for each file
     
-    photometry_file_csv, video_file, behavior_automatic_file, behavior_manual_file, saving_directory = files #Assigning new variables for each file
+    recording_duration, recording_sampling_rate, downsampling_factor = io.get_recording_duration_and_sampling_rate(photometry_file_csv,
+                                                                                                                   allow_downsampling=allow_downsampling) #Get metadata from the photometry file
     
-    recording_duration, recording_sampling_rate, downsampling_factor = io.get_recording_duration_and_sampling_rate(photometry_file_csv, allow_downsampling=allow_downsampling) #Get metadata from the photometry file
+    general_args = {
+        "recording_sampling_rate": recording_sampling_rate,  # Sampling rate of the photometry system
+        "recording_duration": recording_duration,  # The time of recording according to the photometry dataset (s)
+        "smoothing_window": int(recording_sampling_rate),  # The window used to smooth the raw signal
+        "moving_average_window": int(recording_sampling_rate) * 60,  # The window used to estimate the baseline of each signal
+        "cropping_window": 1,  # The time to crop at the begining and the end of the video int(recording_sampling_rate)*30
+        "down_sampling_factor_photometry": downsampling_factor,
+        "lambda": 10**11,  # Lambda parameter for the asymmetric least squares smoothing algorithm
+        "p": 0.01,  # Pparameter for the asymmetric least squares smoothing algorithm
+        }
     
-    general_args = {"recording_sampling_rate" : recording_sampling_rate, #Sampling rate of the photometry system
-                    "recording_duration" : recording_duration, #The time of recording according to the photometry dataset (s)
-                    "smoothing_window" : int(recording_sampling_rate), #The window used to smooth the raw signal
-                    "moving_average_window" : int(recording_sampling_rate)*60, #The window used to estimate the baseline of each signal
-                    "cropping_window" : 1, #The time to crop at the begining and the end of the video int(recording_sampling_rate)*30
-                    "down_sampling_factor_photometry" : downsampling_factor,
-                    "lambda" : 10**11, #Lambda parameter for the asymmetric least squares smoothing algorithm
-                    "p" : 0.01, #P parameter for the asymmetric least squares smoothing algorithm
-                   }
-    
-    if video_file != None :
-        
-        general_args["video"] = True #Bool. True if a video is to be analyzed, otherwise False
-        video_duration, video_sampling_rate = io.get_video_duration_and_framerate(video_file) #Get metadata from the video file
-        general_args["video_duration"] = video_duration #The duration of the video (s)
-        general_args["video_start"] = 0 #The start of the video (s). Change this value if you would like to skip some time at the beginning 
-        general_args["video_end"] = video_duration #The end of the video (s). Change this value if you would like to skip some time at the end 
-        general_args["video_sampling_rate"] = video_sampling_rate #The framerate of the video
-        
-    else :
-        
-        general_args["video"] = False #If no video
-        general_args["video_sampling_rate"] = 0 #The framerate of the video
+    if video_file is not None:
+        general_args["video"] = True  # Bool. True if a video is to be analyzed, otherwise False
+        video_duration, video_sampling_rate = io.get_video_duration_and_framerate(video_file)  # Get metadata from the video file
+        general_args["video_duration"] = video_duration  # The duration of the video (s)
+        general_args["video_start"] = 0  # The start of the video (s). Change this value if you would like to skip some time at the beginning
+        general_args["video_end"] = video_duration  # The end of the video (s). Change this value if you would like to skip some time at the end
+        general_args["video_sampling_rate"] = video_sampling_rate  # The framerate of the video
+    else:
+        general_args["video"] = False  # If no video
+        general_args["video_sampling_rate"] = 0  # The framerate of the video
         
     plot_args = {"photometry_pp" : {"plots_to_display" : {"raw_data" : False,
                                                           "smoothing" : False,
@@ -91,9 +89,11 @@ def set_parameters(files, allow_downsampling=True) :
     
     print("\n")
     
-    utils.print_in_color("If you like to change some of the parameters you can directly modify them in\n\
-the 'parameters.py' file or change them by calling : 'args['arg'] = new_value' with\n\
-arg corresponding to the argument you desire to change, and new_value the new value\n\
-of the argument in question", "GREEN")
+    utils.print_in_color(
+        """If you like to change some of the parameters you can directly modify them in
+        the 'parameters.py' file or change them by calling : 'args['arg'] = new_value' with
+        arg corresponding to the argument you desire to change, and new_value the new value
+        of the argument in question", 'GREEN'"""
+    )
     
     return args

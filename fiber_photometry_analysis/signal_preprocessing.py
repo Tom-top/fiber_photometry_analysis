@@ -28,8 +28,7 @@ from fiber_photometry_analysis import utilities as utils
 # Functions for signal processing
 #########################################################################################################
 
-def down_sample_signal(source, factor) : 
-    
+def down_sample_signal(source, factor):
     """Downsample the data using a certain factor.
     
     Args :  source (arr) = The input signal 
@@ -39,15 +38,13 @@ def down_sample_signal(source, factor) :
     """
     
     if source.ndim != 1:
-        
         raise ValueError("downsample only accepts 1 dimension arrays.")
     
     sink = np.mean(source.reshape(-1, factor), axis=1)
-    
     return sink
 
-def smooth_signal(source, window_len=10, window='flat') :
-    
+
+def smooth_signal(source, window_len=10, window='flat'):
     """Smooth the data using a window with requested size.
     
     This method is based on the convolution of a scaled window with the signal.
@@ -66,37 +63,30 @@ def smooth_signal(source, window_len=10, window='flat') :
     """
 
     if source.ndim != 1:
-        
         raise ValueError("smooth only accepts 1 dimension arrays.")
 
     if source.size < window_len:
-        
         raise ValueError("Input vector needs to be bigger than window size.")
 
 
-    if window_len <3 :
-        
+    if window_len < 3:
         return source
 
-
-    if not window in ['flat', 'hanning', 'hamming', 'bartlett', 'blackman']:
-        
+    if window not in ('flat', 'hanning', 'hamming', 'bartlett', 'blackman'):
         raise ValueError("Window is on of 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'")
 
+    s = np.r_[source[window_len-1:0:-1], source, source[-2:-window_len-1:-1]]
 
-    s=np.r_[source[window_len-1:0:-1], source ,source[-2:-window_len-1:-1]]
-
-    if window == 'flat': #moving average
-        w=np.ones(window_len,'d')
+    if window == 'flat':  # moving average
+        w = np.ones(window_len, 'd')
     else:
-        w=eval('numpy.'+window+'(window_len)')
+        w = eval('numpy.'+window+'(window_len)')
 
-    sink = np.convolve(w/w.sum(),s,mode='valid')
-    
+    sink = np.convolve(w/w.sum(), s, mode='valid')
     return sink
 
-def trailing_moving_average(source, window=1) :
-    
+
+def trailing_moving_average(source, window=1):
     """Function that takes an 1D array as an argument and returns its trailing
     moving average by computing the unweighted mean for the previous n = window data
     
@@ -109,20 +99,17 @@ def trailing_moving_average(source, window=1) :
     """
     
     source = np.array(source)
-    
-    if len(source.shape) == 1 :
-    
+    if len(source.shape) == 1:
         cumsum = np.cumsum(source)
         sink = (cumsum[window:] - cumsum[:-window]) / float(window)
         source = source[window:]
         return source, sink
-    
-    else :
-        
-        raise RuntimeError("The input array has too many dimensions. Input : {0}D, Requiered : 1D".format(len(source.shape)))
+    else:
+        raise RuntimeError("The input array has too many dimensions. Input : {0}D, Requiered : 1D"
+                           .format(len(source.shape)))
 
-def centered_moving_average(source, window=1) :
-    
+
+def centered_moving_average(source, window=1):
     """Function that takes an 1D array as an argument and returns its centered
     moving average by computing the unweighted mean for the previous and next n = window data
     
@@ -134,19 +121,16 @@ def centered_moving_average(source, window=1) :
     
     source = np.array(source)
     
-    if len(source.shape) == 1 :
-        
+    if len(source.shape) == 1:
         cumsum = np.cumsum(source)
         sink = (cumsum[window:] - cumsum[:-window]) / float(window)
         source = source[int(window/2):-int(window/2)]
         return source, sink
-    
-    else :
-        
+    else:
         raise RuntimeError("The input array has too many dimensions. Input : {0}D, Requiered : 1D".format(len(source.shape)))
-        
-def baseline_asymmetric_least_squares_smoothing(source, l, p, n_iter=10) :
-    
+
+
+def baseline_asymmetric_least_squares_smoothing(source, l, p, n_iter=10):
     """Algorithm using Asymmetric Least Squares Smoothing to determine the baseline
     of the signal. Code inspired by the paper from : P. Eilers and H. Boelens in 2005
     (https://www.researchgate.net/publication/228961729_Baseline_Correction_with_Asymmetric_Least_Squares_Smoothing)
@@ -160,22 +144,21 @@ def baseline_asymmetric_least_squares_smoothing(source, l, p, n_iter=10) :
     """
     
     L = len(source)
-    D = sparse.diags([1,-2,1],[0,-1,-2], shape=(L,L-2))
+    D = sparse.diags([1, -2, 1], [0, -1, -2], shape=(L, L-2))
     D = l * D.dot(D.transpose())
     w = np.ones(L)
     W = sparse.spdiags(w, 0, L, L)
     
-    for i in range(n_iter) :
-        
+    for i in range(n_iter):
         W.setdiag(w)
         Z = W + D
         sink = spsolve(Z, w*source)
         w = p * (source > sink) + (1-p) * (source < sink)
         
     return sink
-        
-def low_pass_filter(source, sr, cutoff_freq, order) :
-    
+
+
+def low_pass_filter(source, sr, cutoff_freq, order):
     """Function that takes an 1D array as an argument and returns the filtered 
     signal following the application of a low pass filter with a cutoff frequency = cutoff_freq and
     order = order
@@ -189,17 +172,16 @@ def low_pass_filter(source, sr, cutoff_freq, order) :
     Returns :   sink (np.array) = The centered moving average of the input signal
     """
     
-    for name, arg in zip(["sr", "cutoff_freq", "order"], [sr, cutoff_freq, order]) :
+    for name, arg in zip(("sr", "cutoff_freq", "order"), (sr, cutoff_freq, order)):
         
-        if type(arg) != int :
-        
-            raise RuntimeError("The argument {0} is of incorrect type. Input : {1}, Requiered : int".format(name, type(arg)))
+        if not isinstance(arg, int):
+            raise RuntimeError("The argument {0} is of incorrect type. Input : {1}, Requiered : int"
+                               .format(name, type(arg)))
     
     source = np.array(source)
     
-    if len(source.shape) == 1 :
-    
-        nyq = sr/2 #The nyquist frequency
+    if len(source.shape) == 1:
+        nyq = sr / 2  # The nyquist frequency
         normalized_cutoff = cutoff_freq / nyq
         
         z, p, k = signal.butter(order, normalized_cutoff, output="zpk")
@@ -208,13 +190,12 @@ def low_pass_filter(source, sr, cutoff_freq, order) :
         sink = np.array(filtered)
         
         return sink
-    
-    else :
-        
-        raise RuntimeError("The input array has too many dimensions. Input : {0}D, Requiered : 1D".format(len(source.shape)))
+    else:
+        raise RuntimeError("The input array has too many dimensions. Input : {0}D, Requiered : 1D"
+                           .format(len(source.shape)))
 
-def adjust_signal_to_video_time(time_video, time_final, source) :
-    
+
+def adjust_signal_to_video_time(time_video, time_final, source):
     """Function that adjusts the time stamps of the source signal to the time
     stamps of the video. It then extracts the signal with the same sampling rate
     as the video to simplify the analysis with videos.
@@ -231,7 +212,8 @@ def adjust_signal_to_video_time(time_video, time_final, source) :
     
     return sink
 
-def extract_raw_data(file, **kwargs) :
+
+def extract_raw_data(file, **kwargs):
     
     """Function that extracts the raw data from the csv file and displays it
     in a plot.
@@ -246,16 +228,15 @@ def extract_raw_data(file, **kwargs) :
     
     print("\nExtracting raw data for Isosbestic and Calcium recordings !")
     
-    photometry_data = np.load(file) #Load the NPY file
+    photometry_data = np.load(file)  # Load the NPY file
 
-    x = photometry_data[0] #time to be extracted
-    isosbestic_adjusted = photometry_data[1] #data compressed in time
-    calcium_adjusted = photometry_data[2] #data compressed in time
+    x = photometry_data[0]  # time to be extracted
+    isosbestic_adjusted = photometry_data[1]  # data compressed in time
+    calcium_adjusted = photometry_data[2]  # data compressed in time
     x_max = x[-1]
-#    print("Data length : {0}".format(ut.h_m_s(x_max, add_tags=True)))
+    # print("Data length : {0}".format(ut.h_m_s(x_max, add_tags=True)))
     
-    if kwargs["photometry_pp"]["plots_to_display"]["raw_data"] :
-        
+    if kwargs["photometry_pp"]["plots_to_display"]["raw_data"]:
         xticks, xticklabels, unit = utils.generate_xticks_and_labels(x_max)
         
         fig = plt.figure(figsize=(10, 5), dpi=200.)
@@ -289,18 +270,15 @@ def extract_raw_data(file, **kwargs) :
         
         plt.tight_layout()
         
-        if kwargs["photometry_pp"]["multicursor"] :
-            
-            multi = MultiCursor(fig.canvas, [ax0, ax1], color='r', lw=1, vertOn=[ax0, ax1])
-        
-        if kwargs["save"] :
-            
+        if kwargs["photometry_pp"]["multicursor"]:
+            multi = MultiCursor(fig.canvas, [ax0, ax1], color='r', lw=1, vertOn=[ax0, ax1])  # FIXME: unused
+        if kwargs["save"]:
             plt.savefig(os.path.join(kwargs["save_dir"], "Raw_Signals.{0}".format(kwargs["extension"])), dpi=200.)
         
     return x, isosbestic_adjusted, calcium_adjusted
 
-def down_sample(x, isosbestic, calcium, factor) : 
-    
+
+def down_sample(x, isosbestic, calcium, factor):
     """Downsample the two channels using a certain factor.
     
     Args :  x (arr) = The time data in X
@@ -311,7 +289,7 @@ def down_sample(x, isosbestic, calcium, factor) :
     Returns : sink = The downsampled signal
     """
     
-    delta = len(x)%factor
+    delta = len(x) % factor
     
     x = x[:-delta][::factor]
     isosbestic = down_sample_signal(isosbestic[:-delta], factor)
@@ -319,8 +297,8 @@ def down_sample(x, isosbestic, calcium, factor) :
     
     return x, isosbestic, calcium
 
-def smooth(x, isosbestic, calcium, **kwargs) :
-    
+
+def smooth(x, isosbestic, calcium, **kwargs):
     """Function that smooths the raw data and displays it in a plot.
     
     Args :      x (arr) = The time data in X
@@ -338,10 +316,9 @@ def smooth(x, isosbestic, calcium, **kwargs) :
     isosbestic_smoothed = smooth_signal(isosbestic, window_len=kwargs["smoothing_window"])[:-kwargs["smoothing_window"]+1]
     calcium_smoothed = smooth_signal(calcium, window_len=kwargs["smoothing_window"])[:-kwargs["smoothing_window"]+1]
     x_max = x[-1]
-#    print("Data length : {0}".format(ut.h_m_s(x_max, add_tags=True)))
+    # print("Data length : {0}".format(ut.h_m_s(x_max, add_tags=True)))
     
-    if kwargs["photometry_pp"]["plots_to_display"]["smoothing"] :
-        
+    if kwargs["photometry_pp"]["plots_to_display"]["smoothing"]:
         xticks, xticklabels, unit = utils.generate_xticks_and_labels(x_max)
                 
         fig = plt.figure(figsize=(10, 5), dpi=200.)
@@ -375,18 +352,15 @@ def smooth(x, isosbestic, calcium, **kwargs) :
         
         plt.tight_layout()
         
-        if kwargs["photometry_pp"]["multicursor"] :
-            
-            multi = MultiCursor(fig.canvas, [ax0, ax1], color='r', lw=1, vertOn=[ax0, ax1])
-        
-        if kwargs["save"] :
-            
+        if kwargs["photometry_pp"]["multicursor"]:
+            multi = MultiCursor(fig.canvas, [ax0, ax1], color='r', lw=1, vertOn=[ax0, ax1])  # FIXME: unused
+        if kwargs["save"]:
             plt.savefig(os.path.join(kwargs["save_dir"], "Smoothed_Signals.{0}".format(kwargs["extension"])), dpi=200.)
         
     return x, isosbestic_smoothed, calcium_smoothed
 
-def crop_signal(signal, window) :
-    
+
+def crop_signal(signal, window):
     """Small routine to trim the begining and the end of a recording to filter 
     artifacts.
     
@@ -395,19 +369,11 @@ def crop_signal(signal, window) :
 
     Returns :   sink (arr) = The cropped signal
     """
-    
-    if window == 0 :
-        
-        sink = signal
-        
-    else :
-    
-        sink = signal[int(window):-int(window)]
-    
-    return sink
 
-def find_baseline_and_crop(x, isosbestic, calcium, method="als", **kwargs) :
-    
+    return signal if window == 0 else signal[int(window):-int(window)]
+
+
+def find_baseline_and_crop(x, isosbestic, calcium, method="als", **kwargs):
     """Function that estimates the baseline of the smoothed signals and 
     displays it in a plot.
     
@@ -425,27 +391,23 @@ def find_baseline_and_crop(x, isosbestic, calcium, method="als", **kwargs) :
     
     print("\nStarting baseline computation for Isosbestic and Calcium signals !")
     
-    if method == "als" :
-        
+    if method == "als":
         x = crop_signal(x, int(kwargs["cropping_window"]))
         x = x - x[0]
         isosbestic = crop_signal(isosbestic, int(kwargs["cropping_window"]))
         calcium = crop_signal(calcium, int(kwargs["cropping_window"]))
         isosbestic_fc = baseline_asymmetric_least_squares_smoothing(isosbestic, kwargs["lambda"], kwargs["p"])
         calcium_fc = baseline_asymmetric_least_squares_smoothing(calcium, kwargs["lambda"], kwargs["p"])
-        
-    elif method == "ma" :
-        
+    elif method == "ma":
         x = crop_signal(x, int(kwargs["moving_average_window"]/2))
         x = x - x[0]
         isosbestic, isosbestic_fc = centered_moving_average(isosbestic, window=kwargs["moving_average_window"]) #moving average for isosbestic data
         calcium, calcium_fc = centered_moving_average(calcium, window=kwargs["moving_average_window"]) #moving average for calcium data
         
     x_max = x[-1]
-#    print("Data length : {0}".format(ut.h_m_s(x_max, add_tags=True)))
+    # print("Data length : {0}".format(ut.h_m_s(x_max, add_tags=True)))
     
-    if kwargs["photometry_pp"]["plots_to_display"]["baseline_determination"] :
-        
+    if kwargs["photometry_pp"]["plots_to_display"]["baseline_determination"]:
         xticks, xticklabels, unit = utils.generate_xticks_and_labels(x_max)
             
         fig = plt.figure(figsize=(10, 5), dpi=200.)
@@ -481,18 +443,16 @@ def find_baseline_and_crop(x, isosbestic, calcium, method="als", **kwargs) :
         
         plt.tight_layout()
         
-        if kwargs["photometry_pp"]["multicursor"] :
-            
-            multi = MultiCursor(fig.canvas, [ax0, ax1], color='r', lw=1, vertOn=[ax0, ax1])
-        
-        if kwargs["save"] :
-            
-            plt.savefig(os.path.join(kwargs["save_dir"], "Baseline_Determination.{0}".format(kwargs["extension"])), dpi=200.)
+        if kwargs["photometry_pp"]["multicursor"]:
+            multi = MultiCursor(fig.canvas, [ax0, ax1], color='r', lw=1, vertOn=[ax0, ax1])  # FIXME: unused
+        if kwargs["save"]:
+            plt.savefig(os.path.join(kwargs["save_dir"], "Baseline_Determination.{0}"
+                                     .format(kwargs["extension"])), dpi=200.)
         
     return x, isosbestic, calcium, isosbestic_fc, calcium_fc
 
-def baseline_correction(x, isosbestic, calcium, isosbestic_fc, calcium_fc, **kwargs) :
-    
+
+def baseline_correction(x, isosbestic, calcium, isosbestic_fc, calcium_fc, **kwargs):
     """Function that performs the basleine correction of the smoothed and cropped 
     signals and displays it in a plot.
     
@@ -509,12 +469,11 @@ def baseline_correction(x, isosbestic, calcium, isosbestic_fc, calcium_fc, **kwa
     
     print("\nStarting baseline correcion for Isosbestic and Calcium signals !")
     
-    isosbestic_corrected = ( isosbestic - isosbestic_fc ) / isosbestic_fc #baseline correction for isosbestic
-    calcium_corrected = ( calcium - calcium_fc ) / calcium_fc #baseline correction for calcium
+    isosbestic_corrected = (isosbestic - isosbestic_fc) / isosbestic_fc  # baseline correction for isosbestic
+    calcium_corrected = (calcium - calcium_fc) / calcium_fc  # baseline correction for calcium
     x_max = x[-1]
     
-    if kwargs["photometry_pp"]["plots_to_display"]["baseline_correction"] :
-        
+    if kwargs["photometry_pp"]["plots_to_display"]["baseline_correction"]:
         xticks, xticklabels, unit = utils.generate_xticks_and_labels(x_max)
                 
         fig = plt.figure(figsize=(10, 5), dpi=200.)
@@ -548,18 +507,15 @@ def baseline_correction(x, isosbestic, calcium, isosbestic_fc, calcium_fc, **kwa
         
         plt.tight_layout()
         
-        if kwargs["photometry_pp"]["multicursor"] :
-            
-            multi = MultiCursor(fig.canvas, [ax0, ax1], color='r', lw=1, vertOn=[ax0, ax1])
-        
-        if kwargs["save"] :
-            
+        if kwargs["photometry_pp"]["multicursor"]:
+            multi = MultiCursor(fig.canvas, [ax0, ax1], color='r', lw=1, vertOn=[ax0, ax1])  # FIXME: unused
+        if kwargs["save"]:
             plt.savefig(os.path.join(kwargs["save_dir"], "Baseline_Correction.{0}".format(kwargs["extension"])), dpi=200.)
         
     return isosbestic_corrected, calcium_corrected
 
-def standardization(x, isosbestic, calcium, **kwargs) :
-    
+
+def standardization(x, isosbestic, calcium, **kwargs):
     """Function that performs the standardization of the corrected 
     signals and displays it in a plot.
     
@@ -572,17 +528,15 @@ def standardization(x, isosbestic, calcium, **kwargs) :
                 calcium_standardized (arr) = The standardized calcium signal
     """
     
-    if kwargs["photometry_pp"]["standardize"] : 
-        
+    if kwargs["photometry_pp"]["standardize"]:
         print("\nStarting standardization for Isosbestic and Calcium signals !")
     
-        isosbestic_standardized = ( isosbestic - np.median(isosbestic) ) / np.std(isosbestic) #standardization correction for isosbestic
-        calcium_standardized = ( calcium - np.median(calcium) ) / np.std(calcium) #standardization for calcium
+        isosbestic_standardized = (isosbestic - np.median(isosbestic)) / np.std(isosbestic)  # standardization correction for isosbestic
+        calcium_standardized = (calcium - np.median(calcium)) / np.std(calcium)  # standardization for calcium
         
         x_max = x[-1]
     
-        if kwargs["photometry_pp"]["plots_to_display"]["standardization"] :
-            
+        if kwargs["photometry_pp"]["plots_to_display"]["standardization"]:
             xticks, xticklabels, unit = utils.generate_xticks_and_labels(x_max)
                     
             fig = plt.figure(figsize=(10, 5), dpi=200.)
@@ -618,24 +572,20 @@ def standardization(x, isosbestic, calcium, **kwargs) :
             
             plt.tight_layout()
             
-            if kwargs["photometry_pp"]["multicursor"] :
-                
-                multi = MultiCursor(fig.canvas, [ax0, ax1], color='r', lw=1, vertOn=[ax0, ax1])
-            
-            if kwargs["save"] :
-                
+            if kwargs["photometry_pp"]["multicursor"]:
+                multi = MultiCursor(fig.canvas, [ax0, ax1], color='r', lw=1, vertOn=[ax0, ax1])  # FIXME: unused
+            if kwargs["save"]:
                 plt.savefig(os.path.join(kwargs["save_dir"], "Standardization.{0}".format(kwargs["extension"])), dpi=200.)
-        
-    else :
-        
-        utils.print_in_color("\nThe standardization step in skipped. Parameter plot_args['photometry_pp']['standardize'] == False", "RED")
-        isosbestic_standardized = isosbestic #standardization skipped
-        calcium_standardized = calcium #standardization skipped
+    else:
+        utils.print_in_color("\nThe standardization step in skipped."
+                             " Parameter plot_args['photometry_pp']['standardize'] == False", "RED")
+        isosbestic_standardized = isosbestic  # standardization skipped
+        calcium_standardized = calcium  # standardization skipped
         
     return isosbestic_standardized, calcium_standardized
 
-def interchannel_regression(isosbestic, calcium, **kwargs) :
-    
+
+def interchannel_regression(isosbestic, calcium, **kwargs):
     """Function that performs the inter-channel regression of the two 
     signals and displays it in a plot.
     
@@ -648,23 +598,19 @@ def interchannel_regression(isosbestic, calcium, **kwargs) :
 
     print("\nStarting interchannel regression and alignement for Isosbestic and Calcium signals !")
     
-    if kwargs["photometry_pp"]["regression"] == "Lasso" :
-    
+    if kwargs["photometry_pp"]["regression"] == "Lasso":
         reg = Lasso(alpha=0.0001, precompute=True, max_iter=1000,
                     positive=True, random_state=9999, selection='random')
-        
-    else :
-        
+    else:
         reg = LinearRegression()
         
     n = len(calcium)
-    reg.fit(isosbestic.reshape(n,1), calcium.reshape(n,1))
+    reg.fit(isosbestic.reshape(n, 1), calcium.reshape(n, 1))
     # isosbestic_fitted = (abs(reg.coef_[0])*isosbestic.reshape(n,1)+reg.intercept_[0]).reshape(n,)
-    isosbestic_fitted = reg.predict(isosbestic.reshape(n,1)).reshape(n,)
+    isosbestic_fitted = reg.predict(isosbestic.reshape(n, 1)).reshape(n,)
     
-    if kwargs["photometry_pp"]["plots_to_display"]["inter-channel_regression"] :
-                
-        fig = plt.figure(figsize=(5, 5), dpi=200.)
+    if kwargs["photometry_pp"]["plots_to_display"]["inter-channel_regression"]:
+        fig = plt.figure(figsize=(5, 5), dpi=200.)  # FIXME: unused
         ax0 = plt.subplot(111)
         ax0.scatter(isosbestic, calcium, color="blue", s=0.5, alpha=0.05)
         ax0.plot(isosbestic, isosbestic_fitted, 'r-', linewidth=1)
@@ -675,14 +621,13 @@ def interchannel_regression(isosbestic, calcium, **kwargs) :
         
         plt.tight_layout()
         
-        if kwargs["save"] :
-            
+        if kwargs["save"]:
             plt.savefig(os.path.join(kwargs["save_dir"], "Interchannel_Regression.{0}".format(kwargs["extension"])), dpi=200.)
         
     return isosbestic_fitted
 
-def align_channels(x, isosbestic, calcium, **kwargs) :
-    
+
+def align_channels(x, isosbestic, calcium, **kwargs):
     """Function that performs the alignement of the fitted isosbestic and standardized (or not) calcium
     signals and displays it in a plot.
     
@@ -694,9 +639,8 @@ def align_channels(x, isosbestic, calcium, **kwargs) :
     
     x_max = x[-1]
     
-    if kwargs["photometry_pp"]["plots_to_display"]["channel_alignement"] :
-                
-        fig = plt.figure(figsize=(10, 3), dpi=200.)
+    if kwargs["photometry_pp"]["plots_to_display"]["channel_alignement"]:
+        fig = plt.figure(figsize=(10, 3), dpi=200.)  # FIXME: unused
         ax0 = plt.subplot(111)
         b, = ax0.plot(x, calcium, alpha=0.8, c=kwargs["photometry_pp"]["blue_laser"], lw=kwargs["lw"], zorder=0)
         p, = ax0.plot(x, isosbestic, alpha=0.8, c=kwargs["photometry_pp"]["purple_laser"], lw=kwargs["lw"], zorder=1)
@@ -708,16 +652,13 @@ def align_channels(x, isosbestic, calcium, **kwargs) :
         ax0.set_xlim(0, x_max)
         ax0.set_xlabel("Time ({0})".format(unit), fontsize=kwargs["fsl"])
         
-        if kwargs["photometry_pp"]["standardize"] :
-            
+        if kwargs["photometry_pp"]["standardize"]:
             y_min, y_max, round_factor = utils.generate_yticks(np.concatenate((isosbestic, calcium)), 0.1)
             ax0.set_yticks(np.arange(y_min, y_max+round_factor, round_factor))
             ax0.set_yticklabels(["{:.0f}".format(i) for i in np.arange(y_min, y_max+round_factor, round_factor)], fontsize=kwargs["fsl"])
             ax0.set_ylim(y_min, y_max)
             ax0.set_ylabel("z-score", fontsize=kwargs["fsl"])
-            
-        else :
-            
+        else:
             y_min, y_max, round_factor = utils.generate_yticks(np.concatenate((isosbestic, calcium)), 0.1)
             ax0.set_yticks(np.arange(y_min, y_max+round_factor, round_factor))
             ax0.set_yticklabels(["{:.0f}".format(i) for i in np.arange(y_min, y_max+round_factor, round_factor)*100], fontsize=kwargs["fsl"])
@@ -730,12 +671,11 @@ def align_channels(x, isosbestic, calcium, **kwargs) :
         
         plt.tight_layout()
         
-        if kwargs["save"] :
-            
+        if kwargs["save"]:
             plt.savefig(os.path.join(kwargs["save_dir"], "Alignement.{0}".format(kwargs["extension"])), dpi=200.)
-            
-def dFF(x, isosbestic, calcium, **kwargs) :
-    
+
+
+def dFF(x, isosbestic, calcium, **kwargs):
     """Function that computes the dF/F of the fitted isosbestic and standardized (or not) calcium
     signals and displays it in a plot.
     
@@ -749,37 +689,33 @@ def dFF(x, isosbestic, calcium, **kwargs) :
     
     print("\nStarting the computation of dF/F !")
     
-    dFF = calcium - isosbestic #computing dF/F
+    df_f = calcium - isosbestic  # computing dF/F
     
     max_x = x[-1]
-#    print("Data length : {0}".format(ut.h_m_s(max_x, add_tags=True)))
+    # print("Data length : {0}".format(ut.h_m_s(max_x, add_tags=True)))
     
-    if kwargs["photometry_pp"]["plots_to_display"]["dFF"] :
-        
+    if kwargs["photometry_pp"]["plots_to_display"]["dFF"]:
         xticks, xticklabels, unit = utils.generate_xticks_and_labels(max_x)
         
         fig = plt.figure(figsize=(10, 3), dpi=200.)
         ax0 = plt.subplot(111)
-        g, = ax0.plot(x, dFF, alpha=0.8, c="green", lw=kwargs["lw"])
+        g, = ax0.plot(x, df_f, alpha=0.8, c="green", lw=kwargs["lw"])
         ax0.plot((0, x[-1]), (0, 0), "--", color="black", lw=kwargs["lw"]) #Creates a horizontal dashed line at y = 0 to signal the baseline
         ax0.set_xticks(xticks)
         ax0.set_xticklabels(xticklabels, fontsize=kwargs["fsl"])
         ax0.set_xlim(0, max_x)
         ax0.set_xlabel("Time ({0})".format(unit), fontsize=kwargs["fsl"])
         
-        if kwargs["photometry_pp"]["standardize"] :
-            
-            y_min, y_max, round_factor = utils.generate_yticks(dFF, 0.1)
+        if kwargs["photometry_pp"]["standardize"]:
+            y_min, y_max, round_factor = utils.generate_yticks(df_f, 0.1)
             ax0.set_yticks(np.arange(y_min, y_max+round_factor, round_factor))
             ax0.set_yticklabels(["{:.0f}".format(i) for i in np.arange(y_min, y_max+round_factor, round_factor)], fontsize=kwargs["fsl"])
             ax0.set_ylim(y_min, y_max)
             ax0.set_ylabel(r"z-score $\Delta$F/F", fontsize=kwargs["fsl"])
             ax0.legend(handles=[g], labels=[r"z-score $\Delta$F/F"], loc=2, fontsize=kwargs["fsl"])
             ax0.set_title(r"z-score $\Delta$F/F", fontsize=kwargs["fst"])
-            
-        else :
-            
-            y_min, y_max, round_factor = utils.generate_yticks(dFF, 0.1)
+        else:
+            y_min, y_max, round_factor = utils.generate_yticks(df_f, 0.1)
             ax0.set_yticks(np.arange(y_min, y_max+round_factor, round_factor))
             ax0.set_yticklabels(["{:.0f}".format(i) for i in np.arange(y_min, y_max+round_factor, round_factor)*100], fontsize=kwargs["fsl"])
             ax0.set_ylim(y_min, y_max)
@@ -790,14 +726,13 @@ def dFF(x, isosbestic, calcium, **kwargs) :
         ax0.tick_params(axis='both', which='major', labelsize=kwargs["fsl"])
         plt.tight_layout()
         
-        if kwargs["save"] :
-            
+        if kwargs["save"]:
             plt.savefig(os.path.join(kwargs["save_dir"], "dFF.{0}".format(kwargs["extension"])), dpi=200.)
             
-    return dFF
-    
-def load_photometry_data(file, **kwargs) :
-    
+    return df_f
+
+
+def load_photometry_data(file, **kwargs):
     """Function that runs all the pre-processing steps on the raw isosbestic and
     calcium data and displays it in plot(s).
     
@@ -827,34 +762,34 @@ def load_photometry_data(file, **kwargs) :
     
     time_lost = (len(x0) - len(x2))/kwargs["recording_sampling_rate"]
         
-    data = {"raw" : {"x" : x0,
-                     "isosbestic" : isosbestic,
-                     "calcium" : calcium,
+    data = {
+        "raw": {"x": x0,
+                "isosbestic": isosbestic,
+                "calcium": calcium,
+                },
+        "smoothed": {"x": x1,
+                     "isosbestic": isosbestic_smoothed,
+                     "calcium": calcium_smoothed,
+                     },
+        "cropped": {"x": x2,
+                    "isosbestic": isosbestic_cropped,
+                    "calcium": calcium_cropped,
+                    "isosbestic_fc": function_isosbestic,
+                    "calcium_fc": function_calcium,
                     },
-            "smoothed" : {"x" : x1,
-                          "isosbestic" : isosbestic_smoothed,
-                          "calcium" : calcium_smoothed,
-                          },
-            "cropped" : {"x" : x2,
-                         "isosbestic" : isosbestic_cropped,
-                         "calcium" : calcium_cropped,
-                         "isosbestic_fc" : function_isosbestic,
-                         "calcium_fc" : function_calcium,
-                          },
-            "baseline_correction" : {"x" : x2,
-                                     "isosbestic" : isosbestic_corrected,
-                                     "calcium" : calcium_corrected,
-                                    },
-            "standardization" : {"x" : x2,
-                                 "isosbestic" : isosbestic_standardized,
-                                 "calcium" : calcium_standardized,
+        "baseline_correction": {"x": x2,
+                                "isosbestic": isosbestic_corrected,
+                                "calcium": calcium_corrected,
                                 },
-            "regression" : {"fit" : isosbestic_fitted,
+        "standardization": {"x": x2,
+                            "isosbestic": isosbestic_standardized,
+                            "calcium": calcium_standardized,
                             },
-            "dFF" : {"x" : x2,
-                     "dFF" : dF,
-                    },
-            "time_lost" : time_lost,
-            }
+        "regression": {"fit": isosbestic_fitted},
+        "dFF": {"x": x2,
+                "dFF": dF,
+                },
+        "time_lost": time_lost
+    }
             
     return data

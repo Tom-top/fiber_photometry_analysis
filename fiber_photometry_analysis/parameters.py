@@ -38,13 +38,13 @@ def set_parameters(files, allow_downsampling=True):
         general_args["video"] = False  # If no video
         general_args["video_sampling_rate"] = 0  # The framerate of the video
         
-    plot_args = {"photometry_pp" : {"plots_to_display" : {"raw_data" : False,
-                                                          "smoothing" : False,
-                                                          "baseline_determination" : False,
-                                                          "baseline_correction" : False,
-                                                          "standardization" : False,
-                                                          "inter-channel_regression" : False,
-                                                          "channel_alignement" : False,
+    plot_args = {"photometry_pp" : {"plots_to_display" : {"raw_data" : True,
+                                                          "smoothing" : True,
+                                                          "baseline_determination" : True,
+                                                          "baseline_correction" : True,
+                                                          "standardization" : True,
+                                                          "inter-channel_regression" : True,
+                                                          "channel_alignement" : True,
                                                           "dFF" : True,
                                                             },
                                     "regression" : "Lasso", #The algorithm to use for the inter-channel regression step
@@ -93,7 +93,7 @@ def set_parameters(files, allow_downsampling=True):
         """If you like to change some of the parameters you can directly modify them in
         the 'parameters.py' file or change them by calling : 'args['arg'] = new_value' with
         arg corresponding to the argument you desire to change, and new_value the new value
-        of the argument in question", 'GREEN'"""
+        of the argument in question", 'GREEN'""", "GREEN"
     )
     
     return args

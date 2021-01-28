@@ -25,11 +25,11 @@ from fiber_photometry_analysis import video_plot as v_plot
 #%% ===========================================================================
 # Setting the working directory and the related files
 # =============================================================================
-experiment = "201109"
-mouse = "112"
+experiment = "210121"
+mouse = "207_0000"
 analysis_folder = os.path.normpath('~/photometry_analysis')  # TODO: change
 
-working_directory = os.path.join(analysis_folder, "Test/{0}/{1}".format(experiment, mouse))
+working_directory = "/raid/Photometry/210121"
 
 files = utils.set_file_paths(working_directory, experiment, mouse)
 photometry_file_csv, video_file, behavior_automatic_file, behavior_manual_file, saving_directory = files

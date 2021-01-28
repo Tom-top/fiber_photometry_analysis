@@ -13,6 +13,8 @@ import numpy as np
 import matplotlib.colors as col
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+from matplotlib import pyplot as plt
+from matplotlib.widgets import MultiCursor
 
 plt.style.use("default")
 
@@ -307,3 +309,111 @@ def peri_event_bar_plot(data_around_major_bouts, **kwargs):
     if kwargs["save"]:
         plt.savefig(os.path.join(kwargs["save_dir"], "AUC.{0}".format(kwargs["extension"])),
                     dpi=200., bbox_inches='tight')
+
+
+def add_line_at_zero(ax, x, line_width):
+    """
+    Creates a horizontal dashed line at y = 0 to signal the baseline
+    """
+    ax.plot((0, x[-1]), (0, 0), "--", color="black", lw=line_width)
+
+
+def plot_data_pair(calcium_data, isosbestic_data, title, kwargs, x, add_zero_line=False, units='', to_kilo=False):
+    x_max = x[-1]
+    multiplication_factor = 1000 if to_kilo else 1
+    xticks, xticklabels, unit = utils.generate_xticks_and_labels(x_max)
+
+    fig = plt.figure(figsize=(10, 5), dpi=200.)
+
+    ax0 = plt.subplot(211)
+    sub_plot(data=isosbestic_data, x=x, xticks=xticks, xticklabels=xticklabels, ax=ax0, laser='purple_laser',
+             label='isosbestic', kwargs=kwargs, add_zero_line=add_zero_line, units=units,
+             multiplication_factor=multiplication_factor)
+    ax0.set_title("{} Isosbestic and Calcium signals".format(title.title()), fontsize=kwargs["fst"])
+
+    ax1 = plt.subplot(212, sharex=ax0)
+    sub_plot(data=calcium_data, x=x, xticks=xticks, xticklabels=xticklabels, ax=ax1, laser='blue_laser',
+             label='calcium', kwargs=kwargs, add_zero_line=add_zero_line, units=units,
+             multiplication_factor=multiplication_factor)
+    ax1.set_xlabel("Time ({0})".format(unit), fontsize=kwargs["fsl"])
+
+    plt.tight_layout()
+
+    if kwargs["photometry_pp"]["multicursor"]:
+        multi = MultiCursor(fig.canvas, [ax0, ax1], color='r', lw=1, vertOn=[ax0, ax1])  # FIXME: unused
+    if kwargs["save"]:
+        plt.savefig(os.path.join(kwargs["save_dir"], "{}_Signals.{}".format(title.title(), kwargs["extension"])), dpi=200.)
+
+
+# FIXME: simplify signature
+def sub_plot(data, x, xticks, xticklabels, ax, laser, label, kwargs, add_zero_line, units, multiplication_factor, baseline=None):
+    x_max = x[-1]
+    # TODO: check if compute xticks locally
+    line_width = kwargs['lw']
+    font_size = kwargs["fsl"]
+
+    plot_handle, = ax.plot(x, data, alpha=0.8, c=kwargs["photometry_pp"][laser], lw=line_width)
+    plot_handles = [plot_handle]
+    labels = [label]
+    if baseline:
+        plot_handle_2, = ax.plot(x, baseline, alpha=0.8, c="orange", lw=2)
+        plot_handles.append(plot_handle_2)
+        labels.append('baseline')
+    if add_zero_line:
+        add_line_at_zero(ax, x, line_width)
+    ax.set_xticks(xticks)
+    ax.set_xticklabels(xticklabels, fontsize=font_size)
+    ax.set_xlim(0, x_max)
+    y_min, y_max, round_factor = utils.generate_yticks(data, 0.1)
+    ax.set_yticks(np.arange(y_min, y_max + round_factor, round_factor))
+    ax.set_yticklabels(
+        ["{:.0f}".format(i) for i in np.arange(y_min, y_max + round_factor, round_factor) * multiplication_factor],
+        fontsize=font_size)
+    ax.set_ylim(y_min, y_max)
+    if units:
+        ax.set_ylabel(units, fontsize=font_size)
+    ax.legend(handles=plot_handles, labels=labels, loc=2, fontsize=font_size)
+    ax.tick_params(axis='both', which='major', labelsize=font_size)
+
+
+def plot_cropped_data(calcium, calcium_fc, isosbestic, isosbestic_fc, kwargs, x):
+    x_max = x[-1]
+    xticks, xticklabels, unit = utils.generate_xticks_and_labels(x_max)
+
+    fig = plt.figure(figsize=(10, 5), dpi=200.)
+
+    ax0 = plt.subplot(211)
+    sub_plot(data=isosbestic, x=x, xticks=xticks, xticklabels=xticklabels, ax=ax0, laser='purple_laser',
+             label='isosbestic', kwargs=kwargs, add_zero_line=False, units='mV',
+             multiplication_factor=1000, baseline=isosbestic_fc)
+    ax0.set_title("Smoothed Isosbestic and Calcium signals with respective baselines", fontsize=kwargs["fst"])
+
+    ax1 = plt.subplot(212, sharex=ax0)
+    sub_plot(data=calcium, x=x, xticks=xticks, xticklabels=xticklabels, ax=ax1, laser='blue_laser',
+             label='calcium', kwargs=kwargs, add_zero_line=False, units='mV',
+             multiplication_factor=1000, baseline=calcium_fc)
+    ax1.set_xlabel("Time ({0})".format(unit), fontsize=kwargs["fsl"])
+
+    plt.tight_layout()
+
+    if kwargs["photometry_pp"]["multicursor"]:
+        multi = MultiCursor(fig.canvas, [ax0, ax1], color='r', lw=1, vertOn=[ax0, ax1])  # FIXME: unused
+    if kwargs["save"]:
+        plt.savefig(os.path.join(kwargs["save_dir"], "Baseline_Determination.{0}".format(kwargs["extension"])), dpi=200.)
+
+
+def plot_ca_iso_regression(calcium, isosbestic, isosbestic_fitted, kwargs):
+    plt.figure(figsize=(5, 5), dpi=200.)
+    ax0 = plt.subplot(111)
+    ax0.scatter(isosbestic, calcium, color="blue", s=0.5, alpha=0.05)
+    ax0.plot(isosbestic, isosbestic_fitted, 'r-', linewidth=1)
+    ax0.set_xlabel("Isosbestic", fontsize=kwargs["fsl"])
+    ax0.set_ylabel("Calcium", fontsize=kwargs["fsl"])
+    ax0.set_title("Inter-channel regression of Isosbestic and Calcium signals", fontsize=kwargs["fst"])
+    ax0.tick_params(axis='both', which='major', labelsize=kwargs["fsl"])
+
+    plt.tight_layout()
+
+    if kwargs["save"]:
+        plt.savefig(os.path.join(kwargs["save_dir"], "Interchannel_Regression.{0}".format(kwargs["extension"])),
+                    dpi=200.)

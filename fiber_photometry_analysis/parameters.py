@@ -39,55 +39,59 @@ def set_parameters(files, allow_downsampling=True):
         general_args["video"] = False  # If no video
         general_args["video_sampling_rate"] = 0  # The framerate of the video
         
-    plot_args = {"photometry_pp" : {"plots_to_display" : {"raw_data" : True,
-                                                          "smoothing" : True,
-                                                          "baseline_determination" : True,
-                                                          "baseline_correction" : True,
-                                                          "standardization" : True,
-                                                          "inter-channel_regression" : True,
-                                                          "channel_alignement" : True,
-                                                          "dFF" : True,
-                                                            },
-                                    "regression" : "Lasso", #The algorithm to use for the inter-channel regression step
-                                    "standardize" : True, #If True = Standardizes the signals, otherwise skips this step
-                                    "multicursor" : True, #If True = Displays multicursor on plots, otherwise not (Doesn't work properly)
-                                    "purple_laser" : "#8200c8", #Hex color of the 405nm laser trace
-                                    "blue_laser" : "#0092ff", #Hex color of the 465nm laser trace
-                                    },
-                "peri_event" : {"normalize_heatmap" : False, #If True, normalizes the heatmap of the peri-event plot
-                                "graph_distance_pre" : 10, #Graph distance (distance before the event started (s))
-                                "graph_distance_post" : 10, #Graph distance (distance after the event started (s))
-                                "graph_auc_pre" : 2, #Distance used to compute the area under the curve before the event started (s)
-                                "graph_auc_post" : 2, #Distance used to compute the area under the curve after the event started (s)
-                                "resample_graph" : recording_sampling_rate,
-                                "resample_heatmap" : recording_sampling_rate/100,
-                                "style" : "individual", #The style of the peri event plot. "individual" overlays each individual trace with the average. "average" only displays the average.
-                                "individual_color" : False, #This parameters asigns a different color to each individual trace (if style = "individual"), otherwise every trace is gray
-                                },
-                "video_photometry" : {"display_threshold" : int(5*general_args["video_sampling_rate"]), 
-                                      "plot_acceleration" : general_args["recording_sampling_rate"],
-                                      "global_acceleration" : 5,
-                                      "resize_video" : 1.5,
-                                      "live_plot_fps" : 10.,
-                                      },
-                "lw" : 1., #linewidth of in the plots
-                "fsl" : 6., #fontsize of labels in the plot
-                "fst" : 8., #fontsize of titles in the plot
-                "save" : True,
-                "save_dir" : saving_directory, #Direcotry were the plots will be saved
-                "extension" : "png", #Extension of the saved plots   
-                }
+    plot_args = {
+        "photometry_pp": {
+            "plots_to_display": {
+                "raw_data": True,
+                "smoothing": True,
+                "baseline_determination": True,
+                "baseline_correction": True,
+                "standardization": True,
+                "inter-channel_regression": True,
+                "channel_alignement": True,
+                "dFF": True
+            },
+            "regression": "Lasso",  # The algorithm to use for the inter-channel regression step
+            "standardize": True,  # If True = Standardizes the signals, otherwise skips this step
+            "multicursor": True,  # If True = Displays multicursor on plots, otherwise not (Doesn't work properly)
+            "purple_laser": "#8200c8",  # Hex color of the 405nm laser trace
+            "blue_laser": "#0092ff"  # Hex color of the 465nm laser trace
+        },
+        "peri_event": {
+            "normalize_heatmap": False,  # If True, normalizes the heatmap of the peri-event plot
+            "graph_distance_pre": 10,  # Graph distance (distance before the event started (s))
+            "graph_distance_post": 10,  # Graph distance (distance after the event started (s))
+            "graph_auc_pre": 2,  # Distance used to compute the area under the curve before the event started (s)
+            "graph_auc_post": 2,  # Distance used to compute the area under the curve after the event started (s)
+            "resample_graph": recording_sampling_rate,
+            "resample_heatmap": recording_sampling_rate/100,
+            "style": "individual",  # The style of the peri event plot. "individual" overlays each individual trace with the average. "average" only displays the average.
+            "individual_color": False  # This parameters asigns a different color to each individual trace (if style = "individual"), otherwise every trace is gray
+        },
+        "video_photometry": {
+            "display_threshold": int(5*general_args["video_sampling_rate"]),
+            "plot_acceleration": general_args["recording_sampling_rate"],
+            "global_acceleration": 5,
+            "resize_video": 1.5,
+            "live_plot_fps": 10.
+        },
+        "lw": 1.,  # linewidth of in the plots
+        "fsl": 6.,  # fontsize of labels in the plot
+        "fst": 8.,  # fontsize of titles in the plot
+        "save": True,
+        "save_dir": saving_directory,  # Directory were the plots will be saved
+        "extension": "png"  # Extension of the saved plots
+    }
     
-    behavioral_segmentation_args = {"peak_merging_distance" : 7., #Peak Merging Distance
-                                    "minimal_bout_length" : 0, #Minimal bout length (s)
-                                    }
+    behavioral_segmentation_args = {
+        "peak_merging_distance": 7.,  # Peak Merging Distance
+        "minimal_bout_length": 0,  # Minimal bout length (s)
+    }
     
     args = {**general_args, **behavioral_segmentation_args, **plot_args}
     
     print("\n")
-    
     utils.print_in_color("Parameters loaded successfully", "GREEN")
-    
     print("\n")
     
     utils.print_in_color(

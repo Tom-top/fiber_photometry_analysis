@@ -5,7 +5,7 @@ from scipy.sparse.linalg import spsolve
 from fiber_photometry_analysis.exceptions import FiberPhotometryGenericSignalProcessingValueError
 
 
-def down_sample_signal(source, factor):  # WARNING: any 1D signal
+def down_sample_signal(source, factor):
     """Downsample the data using a certain factor.
 
     Args :  source (arr) = The input signal
@@ -22,7 +22,7 @@ def down_sample_signal(source, factor):  # WARNING: any 1D signal
     return sink
 
 
-def smooth_signal(source, window_len=10, window_type='flat'):  # WARNING: any 1D signal
+def smooth_signal(source, window_len=10, window_type='flat'):
     """Smooth the data using a window with requested size.
 
     This method is based on the convolution of a scaled window with the signal.
@@ -67,7 +67,7 @@ def smooth_signal(source, window_len=10, window_type='flat'):  # WARNING: any 1D
     return sink
 
 
-def baseline_asymmetric_least_squares_smoothing(source, l, p, n_iter=10):  # WARNING: any 1D signal
+def baseline_asymmetric_least_squares_smoothing(source, l, p, n_iter=10):
     """Algorithm using Asymmetric Least Squares Smoothing to determine the baseline
     of the signal. Code inspired by the paper from : P. Eilers and H. Boelens in 2005
     (https://www.researchgate.net/publication/228961729_Baseline_Correction_with_Asymmetric_Least_Squares_Smoothing)
@@ -94,7 +94,7 @@ def baseline_asymmetric_least_squares_smoothing(source, l, p, n_iter=10):  # WAR
     return sink
 
 
-def crop_signal(signal, window):  # WARNING: any 1D signal
+def crop_signal(signal, window):
     """Small routine to trim the begining and the end of a recording to filter
     artifacts.
 

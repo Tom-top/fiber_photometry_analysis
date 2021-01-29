@@ -15,9 +15,10 @@ import moviepy.editor as mpy
 
 from fiber_photometry_analysis import utilities as utils
 from fiber_photometry_analysis import signal_preprocessing as preproc
+from fiber_photometry_analysis.exceptions import FiberFotometryIoFileNotFoundError
 
 
-def convert_to_npy(file, **kwargs):
+def convert_to_npy(file_path, **kwargs):
     """Function that takes a csv file as an input, extract useful data from it
     and saves it as a npy file
     
@@ -26,17 +27,17 @@ def convert_to_npy(file, **kwargs):
     Returns :   npy_file_path (str) = The path to the npy file
     """
     
-    npy_file_path = os.path.join(os.path.dirname(file), "{0}.npy".format(os.path.basename(file).split(".")[0]))
+    npy_file_path = os.path.join(os.path.dirname(file_path), "{0}.npy".format(os.path.basename(file_path).split(".")[0]))
     
-    if not os.path.exists(file):
-        raise RuntimeError("{0} file doesn't exist !".format(file))
+    if not os.path.exists(file_path):
+        raise FiberFotometryIoFileNotFoundError(file_path)
     
-    if os.path.exists(npy_file_path):
-        os.remove(os.path.join(os.path.dirname(file), os.path.basename(file).split(".")[0]+".npy"))  # If you want to remove a pre-existing npy file
+    if os.path.exists(npy_file_path):  # FIXME: extract
+        os.remove(os.path.join(os.path.dirname(file_path), os.path.basename(file_path).split(".")[0] + ".npy"))  # If you want to remove a pre-existing npy file
         
     print("Converting CSV photometry data into NPY")
 
-    photometry_sheet = pd.read_csv(file, header=1, usecols=np.arange(0, 3))  # Load the data
+    photometry_sheet = pd.read_csv(file_path, header=1, usecols=np.arange(0, 3))  # Load the data
     
     non_mask_time = np.isnan(photometry_sheet["Time(s)"])  # F iltering NaN values (missing values)
     non_nan_mask_ch1 = np.isnan(photometry_sheet["AIn-1 - Dem (AOut-1)"])  # Filtering NaN values (missing values)
@@ -116,11 +117,11 @@ def convert_to_npy(file, **kwargs):
         return round(x[-1]), sr, factor
     
 
-def get_video_duration_and_framerate(file):
-    if not os.path.exists(file):
-        raise RuntimeError("{0} file doesn't exist !".format(file))
+def get_video_duration_and_framerate(file_path):
+    if not os.path.exists(file_path):
+        raise FiberFotometryIoFileNotFoundError(file_path)
     
-    video_clip = mpy.VideoFileClip(file)
+    video_clip = mpy.VideoFileClip(file_path)
     duration = video_clip.duration
     fps = video_clip.fps
     

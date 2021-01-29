@@ -7,11 +7,11 @@ Created on Mon Oct 19 10:02:35 2020
 """
 
 import os
-import glob
 import math
 
 import numpy as np
 
+from fiber_photometry_analysis.exceptions import FiberPhotometryTypeError
 
 colors = {
     "GREEN": '\33[32m',
@@ -47,8 +47,8 @@ def h_m_s(time, add_tags=True):
     """
     try:
         int(time)
-    except:
-        raise RuntimeError("The input value is not of the correct type, required type = int")
+    except ValueError:
+        raise FiberPhotometryTypeError(time)
 
     delta = time % 3600
     h = (time - delta) / 3600
@@ -72,10 +72,10 @@ def seconds(h, m, s):
     Returns :   h*3600+m*60+s (int) = time in seconds
     """
     
-    if all(isinstance(i, int) for i in [h, m, s]):
+    if all(isinstance(i, int) for i in (h, m, s)):
         return h*3600+m*60+s
     else:
-        raise RuntimeError("The input values are not of the correct type, required type = int")
+        raise FiberPhotometryTypeError((h, m, s))
 
 
 def check_if_path_exists(path):
@@ -217,19 +217,3 @@ def offset(value, offset, sign):  # FIXME:
         sink = value + (abs(value) * offset)
 
     return sink
-
-
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    

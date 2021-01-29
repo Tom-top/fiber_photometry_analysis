@@ -16,8 +16,8 @@ from sklearn.linear_model import Lasso, LinearRegression
 
 import matplotlib.pyplot as plt
 
-from fiber_photometry_analysis.generic_signal_preprocessing import down_sample_signal, smooth_signal, crop_signal
-from fiber_photometry_analysis.generic_signal_preprocessing import baseline_asymmetric_least_squares_smoothing
+from fiber_photometry_analysis.generic_signal_processing import down_sample_signal, smooth_signal, crop_signal
+from fiber_photometry_analysis.generic_signal_processing import baseline_asymmetric_least_squares_smoothing
 from fiber_photometry_analysis.plot import plot_data_pair, plot_cropped_data, plot_ca_iso_regression, add_line_at_zero
 
 plt.style.use("default")
@@ -278,7 +278,7 @@ def dFF(x, isosbestic, calcium, **kwargs):
     Args :      x (arr) = The time data in X
                 isosbestic (arr) = The fitted isosbestic signal
                 calcium (arr) = The standardized (or not) calcium signal
-                kwargs (dict) = Dictionnary with the parameters
+                kwargs (dict) = Dictionary with the parameters
 
     Returns :   dFF (arr) = Relative changes of fluorescence over time 
     """
@@ -330,9 +330,9 @@ def load_photometry_data(file, **kwargs):
     calcium data and displays it in plot(s).
     
     Args :      file (arr) = The input photometry file for analysis
-                kwargs (dict) = Dictionnary with the parameters
+                kwargs (dict) = Dictionary with the parameters
 
-    Returns :   data (dict) = A dictionnary holding all the results from subsequent steps
+    Returns :   data (dict) = A dictionary holding all the results from subsequent steps
                 OR
                 dFF (arr) = Relative changes of fluorescence over time 
     """

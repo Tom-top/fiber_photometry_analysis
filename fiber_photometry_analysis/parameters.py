@@ -12,9 +12,10 @@ from fiber_photometry_analysis import io
 
 def set_parameters(files, allow_downsampling=True):
     photometry_file_csv, video_file, behavior_automatic_file, behavior_manual_file, saving_directory = files  # Assigning new variables for each file
-    
-    recording_duration, recording_sampling_rate, downsampling_factor = io.get_recording_duration_and_sampling_rate(photometry_file_csv,
-                                                                                                                   allow_downsampling=allow_downsampling) #Get metadata from the photometry file
+
+    sampling_info = io.get_recording_duration_and_sampling_rate(photometry_file_csv,
+                                                                allow_downsampling=allow_downsampling)
+    recording_duration, recording_sampling_rate, downsampling_factor = sampling_info  # Get metadata from the photometry file
     
     general_args = {
         "recording_sampling_rate": recording_sampling_rate,  # Sampling rate of the photometry system
@@ -25,7 +26,7 @@ def set_parameters(files, allow_downsampling=True):
         "down_sampling_factor_photometry": downsampling_factor,
         "lambda": 10**11,  # Lambda parameter for the asymmetric least squares smoothing algorithm
         "p": 0.01,  # Pparameter for the asymmetric least squares smoothing algorithm
-        }
+    }
     
     if video_file is not None:
         general_args["video"] = True  # Bool. True if a video is to be analyzed, otherwise False

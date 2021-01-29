@@ -2,6 +2,9 @@ import numpy as np
 from scipy import sparse
 from scipy.sparse.linalg import spsolve
 
+from fiber_photometry_analysis.exceptions import FiberPhotometryGenericSignalProcessingError, \
+    FiberPhotometryGenericSignalProcessingValueError
+
 
 def down_sample_signal(source, factor):  # WARNING: any 1D signal
     """Downsample the data using a certain factor.
@@ -13,13 +16,14 @@ def down_sample_signal(source, factor):  # WARNING: any 1D signal
     """
 
     if source.ndim != 1:
-        raise ValueError("downsample only accepts 1 dimension arrays.")
+        msg = "down_sample_signal() only accepts 1 dimension arrays. Got '{}'".format(source.ndim)
+        raise FiberPhotometryGenericSignalProcessingValueError(msg)
 
     sink = np.mean(source.reshape(-1, factor), axis=1)
     return sink
 
 
-def smooth_signal(source, window_len=10, window='flat'):  # WARNING: any 1D signal
+def smooth_signal(source, window_len=10, window_type='flat'):  # WARNING: any 1D signal
     """Smooth the data using a window with requested size.
 
     This method is based on the convolution of a scaled window with the signal.
@@ -29,7 +33,7 @@ def smooth_signal(source, window_len=10, window='flat'):  # WARNING: any 1D sign
 
     Args :  source (arr) = the input signal
             window_len (int) = the dimension of the smoothing window; should be an odd integer
-            window (str) = the type of window from 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'
+            window_type (str) = the type of window from 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'
             flat window will produce a moving average smoothing.
 
     Returns : sink = the smoothed signal
@@ -38,23 +42,27 @@ def smooth_signal(source, window_len=10, window='flat'):  # WARNING: any 1D sign
     """
 
     if source.ndim != 1:
-        raise ValueError("smooth only accepts 1 dimension arrays.")
+        msg = "smooth only accepts 1 dimension arrays. Got '{}'".format(source.ndim)
+        raise FiberPhotometryGenericSignalProcessingValueError(msg)
 
     if source.size < window_len:
-        raise ValueError("Input vector needs to be bigger than window size.")
+        msg = "Input vector size ({}) needs to be bigger than window size ({}).".format(source.size, window_len)
+        raise FiberPhotometryGenericSignalProcessingValueError(msg)
 
     if window_len < 3:
         return source
 
-    if window not in ('flat', 'hanning', 'hamming', 'bartlett', 'blackman'):
-        raise ValueError("Window is on of 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'")
+    window_types = ('flat', 'hanning', 'hamming', 'bartlett', 'blackman')
+    if window_type not in window_types:
+        msg = "Window type '{}' is not recognised. Accepted types are '{}'".format(window_type, window_types)
+        raise FiberPhotometryGenericSignalProcessingValueError(msg)
 
     s = np.r_[source[window_len-1:0:-1], source, source[-2:-window_len-1:-1]]
 
-    if window == 'flat':  # moving average
+    if window_type == 'flat':  # moving average
         w = np.ones(window_len, 'd')
     else:
-        w = eval('numpy.'+window+'(window_len)')
+        w = eval('numpy.' + window_type + '(window_len)')
 
     sink = np.convolve(w/w.sum(), s, mode='valid')
     return sink

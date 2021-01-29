@@ -24,7 +24,7 @@ def extract_behavior_data(file, **kwargs):
               end (arr) = the ending timepoints for the behavioral bouts
     """
     
-    f = pd.read_excel(file, header=None)
+    f = pd.read_excel(file, header=None)  # FIXME: replace with rewrite
     
     start_pos = np.where(f[0] == "tStart{0}".format(kwargs["behavior_to_segment"]))[0]
     end_pos = np.where(f[0] == "tEnd{0}".format(kwargs["behavior_to_segment"]))[0]
@@ -44,7 +44,7 @@ def estimate_minimal_resolution(start, end):
     Returns : minimal_resolution (float) = the starting timepoints for the behavioral bouts
     """
     
-    minimal_resolution = 1/min(end-start)
+    minimal_resolution = 1 / min(end - start)
     
     utils.print_in_color("The smallest behavioral bout is {0}s long".format(1 / minimal_resolution), "GREEN")
     
@@ -94,10 +94,10 @@ def trim_behavioral_data(start, end, **kwargs):
               end (arr) = trimmed list of the length of each behavioral bout
     """
     
-    half_time_lost = int(kwargs["photometry_data"]["time_lost"]/2)
+    half_time_lost = int(kwargs["photometry_data"]["time_lost"] / 2)  # FIXME: what is time_lost
     
     masks = [start > half_time_lost, end > half_time_lost,
-             start < kwargs["video_end"]-half_time_lost, end < kwargs["video_end"]-half_time_lost]
+             start < kwargs["video_end"] - half_time_lost, end < kwargs["video_end"] - half_time_lost]  # FIXME: extract var
     total_mask = reduce(np.logical_and, masks)
     
     start = start[total_mask] - half_time_lost
@@ -118,9 +118,9 @@ def extract_manual_bouts(start, end, **kwargs):
     """
     position_bouts = []
     length_bouts = []
-    for s, e in zip(start, end):
+    for s, e in zip(start, end):  # TODO: OPTIMISE:
         position_bouts.append((s, e))
-        length_bouts.append(e-s)
+        length_bouts.append(e - s)
       
     print("\n")
     utils.print_in_color("Behavioral data extracted. Behavior = {0}".format(kwargs["behavior_to_segment"]), "GREEN")
@@ -240,10 +240,3 @@ def reorder_by_bout_size(dF_around_peaks, length_bouts):
     length_bouts_ordered = np.array(length_bouts)[order]
     
     return dd_around_peaks_ordered, length_bouts_ordered
-
-
-
-
-
-
-

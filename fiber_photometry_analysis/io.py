@@ -76,7 +76,7 @@ def convert_to_npy(file_path, **kwargs):  # FIXME: replace by save to dataframe 
     
     np.save(npy_file_path, sink)  # Save the data as numpy file
     
-    print("Filetered : {0} points".format(len(photometry_sheet)-len(filtered_photometry_sheet)))
+    print("Filetered : {0} points".format(len(photometry_sheet) - len(filtered_photometry_sheet)))
 
     return npy_file_path
 
@@ -106,8 +106,8 @@ def get_recording_duration_and_sampling_rate(file_path, allow_downsampling=True)
                              .format(sr), "RED")
 
         if allow_downsampling:
-            factor = int(sr/250)
-            sr = sr/factor
+            factor = int(sr / 250)
+            sr /= factor
             utils.print_in_color("Downsampling was enabled by user. New sampling rate of data : {0}Hz"
                                  .format(sr), "GREEN")
         else:
@@ -115,7 +115,7 @@ def get_recording_duration_and_sampling_rate(file_path, allow_downsampling=True)
     else:
         factor = None
 
-    utils.print_in_color("Lenght of recording : {0}s, estimated sampling rate of the system : {1}"
+    utils.print_in_color("Length of recording : {0}s, estimated sampling rate of the system : {1}"
                          .format(round(x[-1]), sr), "GREEN")
     return round(x[-1]), sr, factor
     

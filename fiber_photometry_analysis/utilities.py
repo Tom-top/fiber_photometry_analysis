@@ -80,7 +80,7 @@ def seconds(h, m, s):
 
 def check_if_path_exists(path):
     """Function that receives a path as an argument and prints a warning
-    message in case the path is not existant
+    message in case the path is not existent
     
     Args :      path (str) = the path to be tested
     """
@@ -188,21 +188,14 @@ def generate_yticks(source, delta):
     round_factor = 1
     while round_factor > (abs(y_max - y_min) - abs(y_max - y_min) * 0.5):
         round_factor /= 10
-    if y_max >= 0:
-        y_max = (math.ceil(y_max/round_factor))*round_factor
-    else:
-        y_max = (math.ceil(y_max/round_factor))*round_factor
-        
-    if y_min >= 0:
-        y_min = (math.floor(y_min/round_factor))*round_factor
-    else:
-        y_min = (math.floor(y_min/round_factor))*round_factor
+    y_max = (math.ceil(y_max / round_factor)) * round_factor
+    y_min = (math.floor(y_min / round_factor)) * round_factor
         
     return y_min, y_max, round_factor
 
 
-def offset(value, offset, sign):  # FIXME:
-    """Small funtion that offsets a value.
+def offset(value, offset, sign):  # FIXME: shadows name
+    """Small function that offsets a value.
     
     Args :      value (float) = the value to be changed
                 offset (float) = the percentage of offset to be used

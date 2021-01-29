@@ -18,7 +18,7 @@ def extract_behavior_data(file, **kwargs):
     """Extracts the raw behavior data from an excel file and cleans it.
     
     Args :  file (str) = the path to the excel file
-            kwargs (dict) = dictionnary with additional parameters
+            kwargs (dict) = dictionary with additional parameters
 
     Returns : start (arr) = the starting timepoints for the behavioral bouts
               end (arr) = the ending timepoints for the behavioral bouts
@@ -88,7 +88,7 @@ def trim_behavioral_data(start, end, **kwargs):
     
     Args :  start (arr) = the starting timepoints for the behavioral bouts
             end (arr) = the ending timepoints for the behavioral bouts
-            kwargs (dict) = dictionnary with additional parameters
+            kwargs (dict) = dictionary with additional parameters
 
     Returns : start (arr) = trimmed list of start and end of each behavioral bout
               end (arr) = trimmed list of the length of each behavioral bout
@@ -111,7 +111,7 @@ def extract_manual_bouts(start, end, **kwargs):
     
     Args :  start (arr) = the starting timepoints for the behavioral bouts
             end (arr) = the ending timepoints for the behavioral bouts
-            kwargs (dict) = dictionnary with additional parameters
+            kwargs (dict) = dictionary with additional parameters
 
     Returns : position_bouts (list) = list of start and end of each behavioral bout
               length_bouts (list) = list of the length of each behavioral bout
@@ -132,7 +132,7 @@ def merge_neighboring_bouts(position_bouts, **kwargs):
     """Algorithm that merges behavioral bouts that are close together.
     
     Args :  position_bouts (arr) = list of start and end of each behavioral bout
-            kwargs (dict) = dictionnary with additional parameters
+            kwargs (dict) = dictionary with additional parameters
 
     Returns : position_bouts_merged (list) = list of merged start and end of each behavioral bout
               length_bouts_merged (list) = list of the length of each merged behavioral bout
@@ -174,7 +174,7 @@ def detect_major_bouts(position_bouts_merged, **kwargs):
     behavioral bouts that are too short to be considered a "major" event)
     
     Args :  position_bouts_merged (arr) = list of merged start and end of each behavioral bout
-            kwargs (dict) = dictionnary with additional parameters
+            kwargs (dict) = dictionary with additional parameters
 
     Returns : position_major_bouts (list) = list of start and end of each major behavioral bout
               length_major_bouts (list) = list of the length of each major behavioral bout
@@ -206,13 +206,12 @@ def detect_major_bouts(position_bouts_merged, **kwargs):
 
 def extract_peri_event_photmetry_data(position_bouts, **kwargs):
     """Algorithm that extracts the photometry data at the moment when the animal behaves.
-    
+
     Args :  position_bouts (arr) = list of start and end of each major behavioral bout
-            kwargs (dict) = dictionnary with additional parameters
+            kwargs (dict) = dictionary with additional parameters
 
     Returns : df_around_peaks (list) = list of photometry data at the moment when the animal behaves
     """
-    
     df_around_peaks = []
     
     for bout in position_bouts:

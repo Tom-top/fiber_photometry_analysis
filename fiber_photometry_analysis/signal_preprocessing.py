@@ -30,7 +30,7 @@ def extract_raw_data(file, **kwargs):
     in a plot.
 
     Args :      file (str) = The input photometry file for analysis
-                kwargs (dict) = Dictionnary with the parameters
+                kwargs (dict) = Dictionary with the parameters
 
     Returns :   x (arr) = The time data in X
                 isosbestic_adjusted (arr) = The adjusted isosbestic signal (time fitted to the video)
@@ -93,7 +93,7 @@ def smooth(x, isosbestic, calcium, **kwargs):
     Args :      x (arr) = The time data in X
                 isosbestic (arr) = The adjusted isosbestic signal (time fitted to the video)
                 calcium (arr) = The adjusted calcium signal (time fitted to the video)
-                kwargs (dict) = Dictionnary with the parameters
+                kwargs (dict) = Dictionary with the parameters
 
     Returns :   x (arr) = The new time data in X
                 isosbestic_smoothed (arr) = The smoothed isosbestic signal
@@ -117,7 +117,7 @@ def find_baseline_and_crop(x, isosbestic, calcium, **kwargs):
     Args :      x (arr) = The time data in X
                 isosbestic (arr) = The smoothed isosbestic signal (time fitted to the video)
                 calcium (arr) = The smoothed calcium signal (time fitted to the video)
-                kwargs (dict) = Dictionnary with the parameters
+                kwargs (dict) = Dictionary with the parameters
 
     Returns :   x (arr) = The time data in X
                 isosbestic (arr) = The cropped isosbestic signal
@@ -149,13 +149,13 @@ def baseline_correction(x, isosbestic, calcium, isosbestic_fc, calcium_fc, **kwa
                 calcium (arr) = The cropped calcium signal
                 isosbestic_fc (arr) = The baseline for the isosbestic signal
                 calcium_fc (arr) = The baseline for the calcium signal
-                kwargs (dict) = Dictionnary with the parameters
+                kwargs (dict) = Dictionary with the parameters
 
     Returns :   isosbestic_corrected (arr) = The baseline corrected isosbestic signal
                 calcium_corrected (arr) = The baseline corrected calcium signal
     """
     
-    print("\nStarting baseline correcion for Isosbestic and Calcium signals !")
+    print("\nStarting baseline correction for Isosbestic and Calcium signals !")
     
     isosbestic_corrected = (isosbestic - isosbestic_fc) / isosbestic_fc  # baseline correction for isosbestic
     calcium_corrected = (calcium - calcium_fc) / calcium_fc  # baseline correction for calcium
@@ -173,7 +173,7 @@ def standardization(x, isosbestic, calcium, **kwargs):
     Args :      x (arr) = The time data in X
                 isosbestic (arr) = The baseline corrected isosbestic signal
                 calcium (arr) = The baseline corrected calcium signal
-                kwargs (dict) = Dictionnary with the parameters
+                kwargs (dict) = Dictionary with the parameters
 
     Returns :   isosbestic_standardized (arr) = The standardized isosbestic signal
                 calcium_standardized (arr) = The standardized calcium signal
@@ -202,12 +202,12 @@ def interchannel_regression(isosbestic, calcium, **kwargs):
     
     Args :      isosbestic (arr) = The standardized (or not) isosbestic signal
                 calcium (arr) = The standardized (or not) calcium signal
-                kwargs (dict) = Dictionnary with the parameters
+                kwargs (dict) = Dictionary with the parameters
 
     Returns :   isosbestic_fitted (arr) = The fitted isosbestic signal
     """
 
-    print("\nStarting interchannel regression and alignement for Isosbestic and Calcium signals !")
+    print("\nStarting interchannel regression and alignment for Isosbestic and Calcium signals !")
     
     if kwargs["photometry_pp"]["regression"] == "Lasso":
         reg = Lasso(alpha=0.0001, precompute=True, max_iter=1000,
@@ -225,14 +225,14 @@ def interchannel_regression(isosbestic, calcium, **kwargs):
     return isosbestic_fitted
 
 
-def align_channels(x, isosbestic, calcium, **kwargs):
-    """Function that performs the alignement of the fitted isosbestic and standardized (or not) calcium
+def align_channels(x, isosbestic, calcium, **kwargs):  # FIXME: plot only. Rename
+    """Function that performs the alignment of the fitted isosbestic and standardized (or not) calcium
     signals and displays it in a plot.
     
     Args :      x (arr) = The time data in X
                 isosbestic (arr) = The fitted isosbestic signal
                 calcium (arr) = The standardized (or not) calcium signal
-                kwargs (dict) = Dictionnary with the parameters
+                kwargs (dict) = Dictionary with the parameters
     """
     if kwargs["photometry_pp"]["plots_to_display"]["channel_alignement"]:
         max_x = x[-1]
@@ -271,7 +271,7 @@ def align_channels(x, isosbestic, calcium, **kwargs):
             plt.savefig(os.path.join(kwargs["save_dir"], "Alignement.{0}".format(kwargs["extension"])), dpi=200.)
 
 
-def dFF(x, isosbestic, calcium, **kwargs):
+def dFF(x, isosbestic, calcium, **kwargs):  # FIXME: rename
     """Function that computes the dF/F of the fitted isosbestic and standardized (or not) calcium
     signals and displays it in a plot.
     

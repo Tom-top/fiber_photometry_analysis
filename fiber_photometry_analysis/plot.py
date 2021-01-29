@@ -33,7 +33,7 @@ def check_dF_with_behavior(position_bouts, length_bouts, color=("blue"), name="d
     Args :  position_bouts (arr) = list of start and end of each behavioral bout
             length_bouts (list) = list of the length of each behavioral bout
             color (list) = color(s) of the behavioral overlay(s)
-            kwargs (dict) = dictionnary with additional parameters
+            kwargs (dict) = dictionary with additional parameters
     """
     
     fig = plt.figure(figsize=(10, 3), dpi=200.)  # FIXME: unused
@@ -88,7 +88,7 @@ def peri_event_plot(data_around_major_bouts, length_major_bouts, cmap="inferno",
             before and after initiation of the behavior
             length_major_bouts (list) = list of the length of each behavioral bout
             cmap (str) = colormap used for the heatmap
-            kwargs (dict) = dictionnary with additional parameters
+            kwargs (dict) = dictionary with additional parameters
     """
     
     mean_data_around_bouts = np.mean(data_around_major_bouts, axis=0)  # Computes the mean for the peri-event photometry data
@@ -221,7 +221,7 @@ def peri_event_bar_plot(data_around_major_bouts, **kwargs):
     The results are summarized in a bar plot showing the AUC before and after initiation of the behavior.
     
     Args :  data_around_major_bouts (arr) = list of the pre-processed photometry data
-            kwargs (dict) = dictionnary with additional parameters
+            kwargs (dict) = dictionary with additional parameters
     """
     
     time_before = np.linspace(0, kwargs["peri_event"]["graph_auc_pre"],

@@ -2,8 +2,7 @@ import numpy as np
 from scipy import sparse
 from scipy.sparse.linalg import spsolve
 
-from fiber_photometry_analysis.exceptions import FiberPhotometryGenericSignalProcessingError, \
-    FiberPhotometryGenericSignalProcessingValueError
+from fiber_photometry_analysis.exceptions import FiberPhotometryGenericSignalProcessingValueError
 
 
 def down_sample_signal(source, factor):  # WARNING: any 1D signal

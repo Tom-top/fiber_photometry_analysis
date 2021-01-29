@@ -18,6 +18,11 @@ from fiber_photometry_analysis import signal_preprocessing as preproc
 from fiber_photometry_analysis.exceptions import FiberFotometryIoFileNotFoundError
 
 
+def validate_path(file_path):
+    if not os.path.exists(file_path):
+        raise FiberFotometryIoFileNotFoundError(file_path)
+
+
 def convert_to_npy(file_path, **kwargs):
     """Function that takes a csv file as an input, extract useful data from it
     and saves it as a npy file
@@ -28,9 +33,8 @@ def convert_to_npy(file_path, **kwargs):
     """
     
     npy_file_path = os.path.join(os.path.dirname(file_path), "{0}.npy".format(os.path.basename(file_path).split(".")[0]))
-    
-    if not os.path.exists(file_path):
-        raise FiberFotometryIoFileNotFoundError(file_path)
+
+    validate_path(file_path)
     
     if os.path.exists(npy_file_path):  # FIXME: extract
         os.remove(os.path.join(os.path.dirname(file_path), os.path.basename(file_path).split(".")[0] + ".npy"))  # If you want to remove a pre-existing npy file
@@ -85,8 +89,7 @@ def get_recording_duration_and_sampling_rate(file_path, allow_downsampling=True)
 
     Returns :   sr (float) = The estimate sampling rate of the photometry system
     """
-    if not os.path.exists(file_path):
-        raise FiberFotometryIoFileNotFoundError(file_path)
+    validate_path(file_path)
 
     photometry_sheet = pd.read_csv(file_path, header=1, usecols=[0])  # Load the data
     photometry_data_npy = photometry_sheet.to_numpy()  # Convert to numpy for speed
@@ -118,8 +121,7 @@ def get_recording_duration_and_sampling_rate(file_path, allow_downsampling=True)
     
 
 def get_video_duration_and_framerate(file_path):
-    if not os.path.exists(file_path):
-        raise FiberFotometryIoFileNotFoundError(file_path)
+    validate_path(file_path)
     
     video_clip = mpy.VideoFileClip(file_path)
     duration = video_clip.duration

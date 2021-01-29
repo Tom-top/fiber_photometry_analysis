@@ -7,7 +7,6 @@ Created on Tue Oct 20 13:35:52 2020
 """
 
 import os
-import numpy as np
 
 import matplotlib.pyplot as plt
 
@@ -69,7 +68,7 @@ args["behavior_to_segment"] = "Behavior1"
 
 start, end = behav_preproc.extract_behavior_data(behavior_manual_file, **args)
 args["resolution_data"] = behav_preproc.estimate_minimal_resolution(start, end)
-start_trimmed, end_trimmed = behav_preproc.trim_behavioral_data(start, end, **args)  # Trims the behavioral data to fit the pre-processed photometry data
+trimmed_bool_map = behav_preproc.trim_behavioral_data(bool_map, **args)  # Trims the behavioral data to fit the pre-processed photometry data
 position_bouts, length_bouts = behav_preproc.extract_manual_bouts(start_trimmed, end_trimmed, **args)  # Extracts the raw behavioral events
 
 plot.check_dF_with_behavior([position_bouts], [length_bouts], color="blue", name="dF_&_raw_behavior", **args)
@@ -119,9 +118,7 @@ args["video_photometry"]["global_acceleration"] = 20
 video_clip_trimmed = video_clip_cropped.subclip(t_start=int(args["photometry_data"]["time_lost"]/2),
                                                 t_end=args["video_duration"]-int(args["photometry_data"]["time_lost"]/2))
 
-behavior_data_x = behav_preproc.create_bool_map(np.array(position_major_bouts).T[0],
-                                                np.array(position_major_bouts).T[1],
-                                                **args)
+behavior_data_x = behav_preproc.create_bool_map(position_major_bouts, args["video_duration"], **args)
 behavior_data_x_trimmed = behavior_data_x[0: int(round((args["video_duration"] - int(args["photometry_data"]["time_lost"])) * args["recording_sampling_rate"]))]
 
 y_data = [behavior_data_x_trimmed, photometry_data["dFF"]["dFF"]]

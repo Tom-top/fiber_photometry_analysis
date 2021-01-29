@@ -6,8 +6,6 @@ Created on Fri Oct 23 16:16:29 2020
 @author: thomas.topilko
 """
 
-from functools import reduce
-
 import numpy as np
 import pandas as pd
 
@@ -51,7 +49,7 @@ def estimate_minimal_resolution(start, end):
     return minimal_resolution
 
 
-def create_bool_map(start, end, **kwargs):
+def create_bool_map(bouts_positions, total_duration, **kwargs):
     """Creates a boolean map of the time during which the animal performs a given behavior.
     
     Args :  start (arr) = the starting timepoints for the behavioral bouts
@@ -59,31 +57,33 @@ def create_bool_map(start, end, **kwargs):
 
     Returns : bool_map (arr) = the boolean map of the time during which the animal performs the behavior
     """
+    sample_interval = 1 / kwargs["recording_sampling_rate"]
+    n_points = total_duration * sample_interval
+    bool_map = np.zeros(n_points)
+    for bout in bouts_positions:  # TODO: check slices
+        start_s, end_s = bout
+        start_p = start_s * sample_interval
+        end_p = end_s * sample_interval
+        bool_map[start_p: end_p] = 1
+
+    utils.print_in_color("\nBehavioral data extracted. Behavior = {0}".format(kwargs["behavior_to_segment"]), "GREEN")
     
-    bool_map = []
-
-    for s, e in zip(start, end):
-        for i in np.arange(len(bool_map)/kwargs["recording_sampling_rate"], s, 1/kwargs["recording_sampling_rate"]):
-            bool_map.append(False)  # FIXME: extend not append
-        for i in np.arange(s, e, 1/kwargs["recording_sampling_rate"]):
-            bool_map.append(True)
-
-    for i in np.arange(i+(1/kwargs["recording_sampling_rate"]), round(kwargs["video_end"]), 1/kwargs["recording_sampling_rate"]):
-        bool_map.append(False)
-        
-    if i != round(kwargs["video_end"]):
-        if not bool_map[-1]:
-            bool_map.append(False)
-        else:
-            bool_map.append(True)
-      
-    print("\n")
-    utils.print_in_color("Behavioral data extracted. Behavior = {0}".format(kwargs["behavior_to_segment"]), "GREEN")
-    
-    return bool_map
+    return bool_map.astype(bool)
 
 
-def trim_behavioral_data(start, end, **kwargs):
+def combine_ethograms(ethogerams):
+    """
+    """
+    if min([eth.size for eth in ethogerams]) != max([eth.size for eth in ethogerams]):
+        raise ValueError('All ethograms must have same length')  # TODO: use specific exception
+    out = np.array(ethogerams[0].size, dtype=np.int)
+    for i, ethogram in enumerate(ethogerams):
+        tmp = ethogram * (i+1)  # Give it the value of it's order in the list
+        out += tmp
+    return out
+
+
+def trim_behavioral_data(bool_map, **kwargs):
     """Trims the behavioral data to fit the pre-processed photometry data.
     
     Args :  start (arr) = the starting timepoints for the behavioral bouts
@@ -93,17 +93,12 @@ def trim_behavioral_data(start, end, **kwargs):
     Returns : start (arr) = trimmed list of start and end of each behavioral bout
               end (arr) = trimmed list of the length of each behavioral bout
     """
-    
-    half_time_lost = int(kwargs["photometry_data"]["time_lost"] / 2)  # FIXME: what is time_lost
-    
-    masks = [start > half_time_lost, end > half_time_lost,
-             start < kwargs["video_end"] - half_time_lost, end < kwargs["video_end"] - half_time_lost]  # FIXME: extract var
-    total_mask = reduce(np.logical_and, masks)
-    
-    start = start[total_mask] - half_time_lost
-    end = end[total_mask] - half_time_lost
-    
-    return start, end
+
+    # The duration that is cropped from the photometry data because of initial fluo drop
+    sampling = 1 / kwargs["recording_sampling_rate"]
+    time_lost_start_in_points = int(kwargs["photometry_data"]["start_time_lost"] * sampling)
+    time_lost_end_in_points = int(kwargs["photometry_data"]["start_time_lost"] * sampling)
+    return bool_map[time_lost_start_in_points:-time_lost_end_in_points]
 
 
 def extract_manual_bouts(start, end, **kwargs):
@@ -116,11 +111,8 @@ def extract_manual_bouts(start, end, **kwargs):
     Returns : position_bouts (list) = list of start and end of each behavioral bout
               length_bouts (list) = list of the length of each behavioral bout
     """
-    position_bouts = []
-    length_bouts = []
-    for s, e in zip(start, end):  # TODO: OPTIMISE:
-        position_bouts.append((s, e))
-        length_bouts.append(e - s)
+    position_bouts = np.column_stack(start, end)
+    length_bouts = end - start
       
     print("\n")
     utils.print_in_color("Behavioral data extracted. Behavior = {0}".format(kwargs["behavior_to_segment"]), "GREEN")
@@ -137,43 +129,24 @@ def merge_neighboring_bouts(position_bouts, **kwargs):
     Returns : position_bouts_merged (list) = list of merged start and end of each behavioral bout
               length_bouts_merged (list) = list of the length of each merged behavioral bout
     """
-    
-    position_bouts_merged = []
-    length_bouts_merged = []
+    position_bouts_merged = position_bouts.copy()  # FIXME: check point/time
+    event_starts = position_bouts[:, 0]
+    event_ends = position_bouts[:, 1]
+    max_bout_gap = kwargs["peak_merging_distance"]  # FIXME: check point/time
 
-    merged = False
-    for i in np.arange(0, len(position_bouts) - 1, 1):
-        if not merged:
-            cur_bout = position_bouts[i]
-        
-        next_bout = position_bouts[i+1]
-        if next_bout[0] - cur_bout[1] <= kwargs["peak_merging_distance"]:
-            merged = True
-            cur_bout = (cur_bout[0], next_bout[1])
-            if i == len(position_bouts)-2:
-                position_bouts_merged.append(cur_bout)
-                length_bouts_merged.append(cur_bout[1] - cur_bout[0])
-        elif next_bout[0] - cur_bout[1] > kwargs["peak_merging_distance"]:
-            merged = False
-            position_bouts_merged.append(cur_bout)
-            length_bouts_merged.append(cur_bout[1] - cur_bout[0])
-            
-            if i == len(position_bouts)-2:
-                position_bouts_merged.append(next_bout)
-                length_bouts_merged.append(next_bout[1] - next_bout[0])
-                
-    print("\n")
-    utils.print_in_color("Merged neighboring peaks that were closer than {0}s away"
-                         .format(kwargs["peak_merging_distance"]), "GREEN")
-                
-    return position_bouts_merged, length_bouts_merged
+    down_times = event_starts - event_ends  # FIXME: depends on start low or high
+    short_gaps_idx = np.where(down_times < max_bout_gap)[0]
+    short_down_time_ranges = np.column_stack((event_ends[short_gaps_idx],
+                                              event_starts[short_gaps_idx]))  # FIXME: depends of low or high start
+    position_bouts_merged[np.r_[short_down_time_ranges]] = 1
+    return position_bouts_merged
 
 
-def detect_major_bouts(position_bouts_merged, **kwargs):
+def detect_major_bouts(position_bouts, **kwargs):
     """Algorithm that detects major behavioral bouts based on size. (Seeds are
     behavioral bouts that are too short to be considered a "major" event)
     
-    Args :  position_bouts_merged (arr) = list of merged start and end of each behavioral bout
+    Args :  position_bouts (arr) = list of merged start and end of each behavioral bout
             kwargs (dict) = dictionary with additional parameters
 
     Returns : position_major_bouts (list) = list of start and end of each major behavioral bout
@@ -181,27 +154,23 @@ def detect_major_bouts(position_bouts_merged, **kwargs):
               position_seed_bouts (list) = list of start and end of each seed behavioral bout
               length_seed_bouts (list) = list of the length of each seed behavioral bout
     """
-    position_major_bouts = []
-    length_major_bouts = []
-    
-    position_seed_bouts = []
-    length_seed_bouts = []
-    
-    for i in position_bouts_merged:
-        bout_duration = i[1] - i[0]
-        
-        if bout_duration >= kwargs["minimal_bout_length"]:
-            if kwargs["peri_event"]["graph_distance_pre"] <= i[0] <= kwargs["video_end"]-kwargs["peri_event"]["graph_distance_post"]-kwargs["photometry_data"]["time_lost"]:
-                position_major_bouts.append((i[0], i[1]))
-                length_major_bouts.append(bout_duration)
-            else:
-                position_seed_bouts.append((i[0], i[1]))
-                length_seed_bouts.append(bout_duration)
-        elif bout_duration < kwargs["minimal_bout_length"]:
-            position_seed_bouts.append((i[0], i[1]))
-            length_seed_bouts.append(bout_duration)
+    event_starts = position_bouts[:, 0]
+    event_ends = position_bouts[:, 1]
+    min_bout_length = kwargs["minimal_bout_length"]
+
+    up_times = event_ends - event_starts  # FIXME: depends on start low or high
+
+    short_bouts_idx = np.where(up_times < min_bout_length)[0]
+    short_bout_ranges = np.column_stack((event_ends[short_bouts_idx],
+                                         event_starts[short_bouts_idx]))
+    short_bout_durations = short_bout_ranges[:, 1] - short_bout_ranges[:, 0]
+
+    long_bouts_idx = np.where(up_times >= min_bout_length)[0]
+    long_bout_ranges = np.column_stack((event_ends[long_bouts_idx],
+                                        event_starts[long_bouts_idx]))
+    long_bout_durations = long_bout_ranges[:, 1] - long_bout_ranges[:, 0]
             
-    return position_major_bouts, length_major_bouts, position_seed_bouts, length_seed_bouts
+    return long_bout_ranges, long_bout_durations, short_bout_ranges, short_bout_durations
 
 
 def extract_peri_event_photmetry_data(position_bouts, **kwargs):
@@ -224,7 +193,7 @@ def extract_peri_event_photmetry_data(position_bouts, **kwargs):
     return df_around_peaks
 
 
-def reorder_by_bout_size(dF_around_peaks, length_bouts):
+def reorder_by_bout_size(delta_f_around_peaks, length_bouts):
     """Simple algorithm that re-orders the peri-event photometry data based on the size of the behavioral event.
     
     Args :  dF_around_peaks (arr) = list of photometry data at the moment when the animal behaves
@@ -235,7 +204,7 @@ def reorder_by_bout_size(dF_around_peaks, length_bouts):
     """
     order = np.argsort(-np.array(length_bouts))
     
-    dd_around_peaks_ordered = np.array(dF_around_peaks)[order]
+    dd_around_peaks_ordered = np.array(delta_f_around_peaks)[order]
     length_bouts_ordered = np.array(length_bouts)[order]
     
     return dd_around_peaks_ordered, length_bouts_ordered

@@ -5,6 +5,27 @@ from scipy.sparse.linalg import spsolve
 from fiber_photometry_analysis.exceptions import FiberPhotometryGenericSignalProcessingValueError
 
 
+def validate_shape(source, expected_shape, func_name=''):
+    if source.ndim != expected_shape:
+        msg = "{}() only accepts {} dimension arrays. Got '{}' dimensions"\
+            .format(func_name, expected_shape, source.ndim)
+        raise FiberPhotometryGenericSignalProcessingValueError(msg)
+
+
+def validate_size(source, window_len):
+    if source.size < window_len:  # TODO: extract validator
+        msg = "Input vector size ({}) needs to be bigger than window size ({})."\
+            .format(source.size, window_len)
+        raise FiberPhotometryGenericSignalProcessingValueError(msg)
+
+
+def validate_dict(key, src_dict, key_name='Window type'):
+    if key not in src_dict.keys():
+        msg = "{} '{}' is not recognised. Accepted types are '{}'" \
+            .format(key_name, key, src_dict.keys())
+        raise FiberPhotometryGenericSignalProcessingValueError(msg)
+
+
 def down_sample_signal(source, factor):
     """Downsample the data using a certain factor.
 
@@ -14,10 +35,7 @@ def down_sample_signal(source, factor):
     Returns : sink = The downsampled signal
     """
 
-    if source.ndim != 1:
-        msg = "down_sample_signal() only accepts 1 dimension arrays. Got '{}'".format(source.ndim)
-        raise FiberPhotometryGenericSignalProcessingValueError(msg)
-
+    validate_shape(source, 1, 'down_sample_signal')
     sink = np.mean(source.reshape(-1, factor), axis=1)
     return sink
 
@@ -40,30 +58,24 @@ def smooth_signal(source, window_len=10, window_type='flat'):
     Code taken from (https://scipy-cookbook.readthedocs.io/items/SignalSmooth.html)
     """
 
-    if source.ndim != 1:
-        msg = "smooth only accepts 1 dimension arrays. Got '{}'".format(source.ndim)
-        raise FiberPhotometryGenericSignalProcessingValueError(msg)
-
-    if source.size < window_len:
-        msg = "Input vector size ({}) needs to be bigger than window size ({}).".format(source.size, window_len)
-        raise FiberPhotometryGenericSignalProcessingValueError(msg)
+    validate_shape(source, 1, 'smooth_signal')
+    validate_size(source, window_len)
 
     if window_len < 3:
         return source
 
-    window_types = ('flat', 'hanning', 'hamming', 'bartlett', 'blackman')
-    if window_type not in window_types:
-        msg = "Window type '{}' is not recognised. Accepted types are '{}'".format(window_type, window_types)
-        raise FiberPhotometryGenericSignalProcessingValueError(msg)
+    windows = {
+        'flat': np.ones(window_len, 'd'),  # moving avg
+        'hanning': np.hanning(window_len),
+        'hamming': np.hamming(window_len),
+        'bartlett': np.bartlett(window_len),
+        'blackman': np.blackman(window_len)
+    }
+    validate_dict(window_type, windows)
 
     s = np.r_[source[window_len-1:0:-1], source, source[-2:-window_len-1:-1]]
-
-    if window_type == 'flat':  # moving average
-        w = np.ones(window_len, 'd')
-    else:
-        w = eval('numpy.' + window_type + '(window_len)')
-
-    sink = np.convolve(w/w.sum(), s, mode='valid')
+    w = windows[window_type]
+    sink = np.convolve(w / w.sum(), s, mode='valid')
     return sink
 
 
@@ -104,4 +116,5 @@ def crop_signal(signal, window):
     Returns :   sink (arr) = The cropped signal
     """
 
-    return signal if window == 0 else signal[int(window):-int(window)]
+    window = int(window)
+    return signal if window == 0 else signal[window:-window]

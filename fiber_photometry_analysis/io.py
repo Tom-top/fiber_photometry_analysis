@@ -56,13 +56,14 @@ def convert_to_npy(file_path, **kwargs):  # FIXME: replace by save to dataframe 
     photometry_data_transposed = np.transpose(photometry_data_cropped)  # Transpose data
     
     x = np.array(photometry_data_transposed[0])  # time data
-    
+
+    recording_freq = 1 / kwargs["recording_sampling_rate"]
     if not kwargs["video"]:
         x_adjusted = np.linspace(0, kwargs["recording_duration"], len(x))  # adjusted time data to fit the "real" video time
-        x_target = np.arange(0, kwargs["recording_duration"], 1/kwargs["recording_sampling_rate"])  # time to be extracted
+        x_target = np.arange(0, kwargs["recording_duration"], recording_freq)  # time to be extracted
     else:
         x_adjusted = np.linspace(0, kwargs["video_duration"], len(x))  # adjusted time data to fit the "real" video time
-        x_target = np.arange(kwargs["video_start"], kwargs["video_end"], 1/kwargs["recording_sampling_rate"])  # time to be extracted
+        x_target = np.arange(kwargs["video_start"], kwargs["video_end"], recording_freq)  # time to be extracted
         
     isosbestic = np.array(photometry_data_transposed[1])  # isosbestic data
     isosbestic_adjusted = preproc.adjust_signal_to_video_time(x_adjusted, x_target, isosbestic)  # data compressed in time
@@ -99,6 +100,7 @@ def get_recording_duration_and_sampling_rate(file_path, allow_downsampling=True)
 
     sr = round(len(x) / x[-1])
 
+    factor = None
     if sr >= 250:
         print("\n")
         utils.print_in_color("The sampling rate of the recording is pretty high : {0}. "
@@ -110,10 +112,6 @@ def get_recording_duration_and_sampling_rate(file_path, allow_downsampling=True)
             sr /= factor
             utils.print_in_color("Downsampling was enabled by user. New sampling rate of data : {0}Hz"
                                  .format(sr), "GREEN")
-        else:
-            factor = None
-    else:
-        factor = None
 
     utils.print_in_color("Length of recording : {0}s, estimated sampling rate of the system : {1}"
                          .format(round(x[-1]), sr), "GREEN")

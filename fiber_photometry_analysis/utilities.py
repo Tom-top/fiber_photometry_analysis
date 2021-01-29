@@ -32,7 +32,14 @@ def print_in_color(message, color):
     Returns :   color (str) = The color of the message to be printed (colors)
     """
     color = colors[color]
-    print("{0}{1}{2}".format(color, message, colors["END"])) 
+    print("{0}{1}{2}".format(color, message, colors["END"]))
+
+
+def safe_int(val):
+    try:
+        return int(val)
+    except ValueError:
+        raise FiberPhotometryTypeError(val)
 
 
 def h_m_s(time, add_tags=True):
@@ -45,10 +52,7 @@ def h_m_s(time, add_tags=True):
                 m (int) = minutes
                 s (int) = seconds
     """
-    try:
-        int(time)
-    except ValueError:
-        raise FiberPhotometryTypeError(time)
+    time = safe_int(time)
 
     delta = time % 3600
     h = (time - delta) / 3600
@@ -71,11 +75,8 @@ def seconds(h, m, s):
     
     Returns :   h*3600+m*60+s (int) = time in seconds
     """
-    
-    if all(isinstance(i, int) for i in (h, m, s)):
-        return h*3600+m*60+s
-    else:
-        raise FiberPhotometryTypeError((h, m, s))
+    h, m, s = (safe_int(val) for val in (h, m, s))
+    return h * 3600 + m * 60 + s
 
 
 def check_if_path_exists(path):
@@ -107,16 +108,21 @@ def set_file_paths(working_directory, experiment, mouse):
                 behavior_automatic_file (str) = path to the automatic behavior file
                 behavior_manual_file (str) = the working manual behavior file
     """
-    
-    photometry_file_csv = os.path.join(working_directory, "photometry_{0}_{1}.csv".format(experiment, mouse))
-    video_file = os.path.join(working_directory, "video_{0}_{1}.avi".format(experiment, mouse))
-    behavior_automatic_file = os.path.join(working_directory, "behavior_automatic_{0}_{1}.npy".format(experiment, mouse))
-    behavior_manual_file = os.path.join(working_directory, "behavior_manual_{0}_{1}.xlsx".format(experiment, mouse))
+
+    def get_generic_file_path(base_name, ext):
+        return os.path.join(working_directory,
+                            "{}_{}_{}.{}".format(base_name, experiment, mouse, ext))
+
+    files = [
+        get_generic_file_path("photometry", "csv"),
+        get_generic_file_path("video", "avi"),
+        get_generic_file_path("behavior_automatic", "npy"),
+        get_generic_file_path("behavior_manual", "xlsx")
+    ]
+
     saving_directory = os.path.join(working_directory, "Results")
+    files.append(saving_directory)
 
-    print("\n")
-
-    files = [photometry_file_csv, video_file, behavior_automatic_file, behavior_manual_file, saving_directory]
     for n, p in enumerate(files):
         if p == saving_directory:
             if not os.path.exists(p):
@@ -140,32 +146,26 @@ def generate_xticks_and_labels(time):
                 unit (str) = the unit
     """
     
-    n_mins = (time - time % 60)/60
+    n_mins = (time - time % 60) / 60
     
     if n_mins > 1:
         if n_mins < 10:
             step_ticks = 60
-            xticks = np.arange(0, (time - (time%60))+step_ticks, step_ticks)
-            step_labels = step_ticks/60
-            xticklabels = np.arange(0, ((time - (time%60))/60)+step_labels, step_labels)
-            unit = "min"
-        elif n_mins >= 10:
-            step_ticks = (time - time%600)/10
-            xticks = np.arange(0, (time - (time%60))+step_ticks, step_ticks)
-            step_labels = step_ticks/60
-            xticklabels = np.arange(0, ((time - (time%60))/60)+step_labels, step_labels)
-            unit = "min"
-    elif n_mins <= 1:
+        else:
+            step_ticks = (time - time % 600) / 10
+        xticks = np.arange(0, (time - (time % 60)) + step_ticks, step_ticks)
+        step_labels = step_ticks / 60
+        xticklabels = np.arange(0, ((time - (time % 60)) / 60) + step_labels, step_labels)
+        unit = "min"
+    else:
         if time >= 10:
             step_ticks = 5
-            xticks = np.arange(0, (time - time%5)+step_ticks, step_ticks)
-            xticklabels = xticks
-            unit = "sec"
-        elif time < 10:
+            xticks = np.arange(0, (time - time % 5) + step_ticks, step_ticks)
+        else:
             step_ticks = 1
-            xticks = np.arange(0, time+step_ticks, step_ticks)
-            xticklabels = xticks
-            unit = "sec"
+            xticks = np.arange(0, time + step_ticks, step_ticks)
+        xticklabels = xticks
+        unit = "sec"
     
     return xticks, xticklabels, unit
 
@@ -203,15 +203,13 @@ def offset(value, offset, sign):  # FIXME: shadows name
     
     Returns :   sink (float) = the offset value
     """
+    signed_offset = (abs(value) * offset)
     if sign == "-":
-        sink = value - (abs(value) * offset)
-        return sink
-    elif sign == "+":
-        sink = value + (abs(value) * offset)
+        signed_offset *= -1
 
-    return sink
+    return value + signed_offset
 
 
-def replace_ext(file_path, file_ext):
+def replace_ext(file_path, file_ext):  # TODO: check if exists
     return os.path.join(os.path.dirname(file_path),
                         os.path.basename(file_path).split(".")[0] + ".".format(file_ext))

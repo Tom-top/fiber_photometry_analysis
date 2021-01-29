@@ -27,7 +27,7 @@ def live_video_plot(video_clip, x_data, y_data, **kwargs):
             try:
                 behavior_plot.set_data(x_data[0:i], y_data[0][0:i])
                 df_plot.set_data(x_data[0:i], y_data[1][0:i])
-            except :
+            except:  # FIXME: broad except
                 print("Oups a problem occured")
     
             last_frame = mplfig_to_npimage(live_figure)
@@ -41,7 +41,7 @@ def live_video_plot(video_clip, x_data, y_data, **kwargs):
             try:
                 behavior_plot.set_data(x_data[0:i], y_data[0][0:i])
                 df_plot.set_data(x_data[0:i], y_data[1][0:i])
-            except:
+            except:  # FIXME: broad except
                 print("Oups a problem occured")
 
             last_frame = mplfig_to_npimage(live_figure)

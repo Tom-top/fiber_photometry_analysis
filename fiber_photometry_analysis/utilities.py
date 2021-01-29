@@ -217,3 +217,8 @@ def offset(value, offset, sign):  # FIXME:
         sink = value + (abs(value) * offset)
 
     return sink
+
+
+def replace_ext(file_path, file_ext):
+    return os.path.join(os.path.dirname(file_path),
+                        os.path.basename(file_path).split(".")[0] + ".".format(file_ext))

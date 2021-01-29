@@ -24,7 +24,7 @@ def extract_behavior_data(file, **kwargs):
               end (arr) = the ending timepoints for the behavioral bouts
     """
     
-    f = pd.read_excel(file, header=None)  # FIXME: replace with rewrite
+    f = pd.read_excel(file, header=None)  # FIXME: replace with rewrite binary dataframe
     
     start_pos = np.where(f[0] == "tStart{0}".format(kwargs["behavior_to_segment"]))[0]
     end_pos = np.where(f[0] == "tEnd{0}".format(kwargs["behavior_to_segment"]))[0]

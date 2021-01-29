@@ -16,6 +16,7 @@ import moviepy.editor as mpy
 from fiber_photometry_analysis import utilities as utils
 from fiber_photometry_analysis import signal_preprocessing as preproc
 from fiber_photometry_analysis.exceptions import FiberFotometryIoFileNotFoundError
+from fiber_photometry_analysis.utilities import replace_ext
 
 
 def validate_path(file_path):
@@ -23,7 +24,7 @@ def validate_path(file_path):
         raise FiberFotometryIoFileNotFoundError(file_path)
 
 
-def convert_to_npy(file_path, **kwargs):
+def convert_to_npy(file_path, **kwargs):  # FIXME: replace by save to dataframe binary
     """Function that takes a csv file as an input, extract useful data from it
     and saves it as a npy file
     
@@ -32,12 +33,11 @@ def convert_to_npy(file_path, **kwargs):
     Returns :   npy_file_path (str) = The path to the npy file
     """
     
-    npy_file_path = os.path.join(os.path.dirname(file_path), "{0}.npy".format(os.path.basename(file_path).split(".")[0]))
-
     validate_path(file_path)
-    
-    if os.path.exists(npy_file_path):  # FIXME: extract
-        os.remove(os.path.join(os.path.dirname(file_path), os.path.basename(file_path).split(".")[0] + ".npy"))  # If you want to remove a pre-existing npy file
+
+    npy_file_path = replace_ext(file_path, 'npy')
+    if os.path.exists(npy_file_path):
+        os.remove(npy_file_path)
         
     print("Converting CSV photometry data into NPY")
 

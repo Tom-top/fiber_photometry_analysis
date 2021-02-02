@@ -24,11 +24,8 @@ def live_video_plot(video_clip, x_data, y_data, **kwargs):
     def make_frame_mpl(t):
         i = int(t)
         if i < kwargs["video_photometry"]["display_threshold"]*kwargs["video_photometry"]["plot_acceleration"]:
-            try:
-                behavior_plot.set_data(x_data[0:i], y_data[0][0:i])
-                df_plot.set_data(x_data[0:i], y_data[1][0:i])
-            except:  # FIXME: broad except
-                print("Oups a problem occured")
+            behavior_plot.set_data(x_data[0:i], y_data[0][0:i])
+            df_plot.set_data(x_data[0:i], y_data[1][0:i])
     
             last_frame = mplfig_to_npimage(live_figure)
             return last_frame
@@ -37,12 +34,9 @@ def live_video_plot(video_clip, x_data, y_data, **kwargs):
         
             live_ax0.set_xlim(x_data[0]+delta, x_data[0]+(i/kwargs["video_photometry"]["plot_acceleration"]))
             live_ax1.set_xlim(x_data[0]+delta, x_data[0]+(i/kwargs["video_photometry"]["plot_acceleration"]))
-            
-            try:
-                behavior_plot.set_data(x_data[0:i], y_data[0][0:i])
-                df_plot.set_data(x_data[0:i], y_data[1][0:i])
-            except:  # FIXME: broad except
-                print("Oups a problem occured")
+
+            behavior_plot.set_data(x_data[0:i], y_data[0][0:i])
+            df_plot.set_data(x_data[0:i], y_data[1][0:i])
 
             last_frame = mplfig_to_npimage(live_figure)
             return last_frame

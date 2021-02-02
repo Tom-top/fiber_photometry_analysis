@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 
 from fiber_photometry_analysis import utilities as utils
+from fiber_photometry_analysis.exceptions import FiberPhotometryDimensionError
 
 
 def extract_behavior_data(file, **kwargs):
@@ -75,7 +76,7 @@ def combine_ethograms(ethogerams):
     """
     """
     if min([eth.size for eth in ethogerams]) != max([eth.size for eth in ethogerams]):
-        raise ValueError('All ethograms must have same length')  # TODO: use specific exception
+        raise FiberPhotometryDimensionError('All ethograms must have same length')
     out = np.array(ethogerams[0].size, dtype=np.int)
     for i, ethogram in enumerate(ethogerams):
         tmp = ethogram * (i+1)  # Give it the value of it's order in the list

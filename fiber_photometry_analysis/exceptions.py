@@ -6,6 +6,10 @@ class FiberPhotometryUtilitiesException(FiberPhotometryException):
     pass
 
 
+class FiberPhotometryDimensionError(FiberPhotometryException, ValueError):
+    pass
+
+
 class FiberPhotometryTypeError(FiberPhotometryUtilitiesException):
     def __init__(self, value, required_type=int, message="The value '{}' of type '{}' is not of the required type '{}'"):
         self.value = value

@@ -7,7 +7,8 @@ requirements = [
     'matplotlib',
     'seaborn',
     'scikit-learn',
-    'moviepy'
+    'moviepy',
+    'xlrd'  # required for pandas to load excel files
 ]
 
 setup(

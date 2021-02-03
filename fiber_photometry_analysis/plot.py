@@ -26,7 +26,7 @@ from sklearn.metrics import auc
 from fiber_photometry_analysis import utilities as utils
 
 
-def check_dF_with_behavior(position_bouts, length_bouts, color=("blue"), name="dF_&_behavioral_overlay", **kwargs):
+def check_delta_f_with_behavior(position_bouts, length_bouts, color=("blue"), name="dF_&_behavioral_overlay", **kwargs):
     """Function that plots the pre-processed photometry data and overlays the
     behavior data.
     

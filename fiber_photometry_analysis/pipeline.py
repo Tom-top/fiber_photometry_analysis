@@ -27,7 +27,6 @@ from fiber_photometry_analysis import video_plot as v_plot
 experiment = "210121"
 mouse = "207_0000"
 analysis_folder = os.path.normpath('~/photometry_analysis')  # TODO: change
-
 working_directory = "/raid/Photometry/210121"
 
 files = utils.set_file_paths(working_directory, experiment, mouse)
@@ -71,7 +70,6 @@ args["resolution_data"] = behav_preproc.estimate_minimal_resolution(start, end)
 trimmed_bool_map = behav_preproc.trim_behavioral_data(bool_map, **args)  # Trims the behavioral data to fit the pre-processed photometry data
 position_bouts, length_bouts = behav_preproc.extract_manual_bouts(start_trimmed, end_trimmed, **args)  # Extracts the raw behavioral events
 
-plot.check_dF_with_behavior([position_bouts], [length_bouts], color="blue", name="dF_&_raw_behavior", **args)
 
 #%% ===========================================================================
 # Merge behavioral bouts that are close together
@@ -79,8 +77,6 @@ plot.check_dF_with_behavior([position_bouts], [length_bouts], color="blue", name
 args["peak_merging_distance"] = 2
 position_bouts_merged, length_bouts_merged = behav_preproc.merge_neighboring_bouts(position_bouts, **args)
 
-plot.check_dF_with_behavior([position_bouts_merged], [length_bouts_merged],
-                            color="blue", name="dF_&_merged_behavior", **args)
 
 #%% ===========================================================================
 # Detect major behavioral bouts based on size
@@ -88,10 +84,17 @@ plot.check_dF_with_behavior([position_bouts_merged], [length_bouts_merged],
 args["minimal_bout_length"] = 1
 position_major_bouts, length_major_bouts, position_seed_bouts, length_seed_bouts = behav_preproc.detect_major_bouts(position_bouts_merged, **args) #Extracts major bouts from the data
 
-plot.check_dF_with_behavior([position_major_bouts, position_seed_bouts], [length_major_bouts, length_seed_bouts],
-                            color=["blue", "red"], name="dF_&_filtered_behavior", **args)
 
 #%% ===========================================================================
+
+plot.check_delta_f_with_behavior([position_bouts], [length_bouts], color="blue", name="dF_&_raw_behavior", **params)  # FIXME: could use boolean map FIXME: remove ampersand
+plot.check_delta_f_with_behavior([position_bouts_merged], [length_bouts_merged],  # FIXME: could use boolean map
+                                 color="blue", name="dF_&_merged_behavior", **params)  # FIXME: remove ampersand
+
+plot.check_delta_f_with_behavior([position_major_bouts, position_seed_bouts], [length_major_bouts, length_seed_bouts],
+                                 color=["blue", "red"], name="dF_&_filtered_behavior", **params)  # FIXME: remove ampersand
+
+
 # Extract photometry data around major bouts of behavior
 # =============================================================================
 args["peri_event"]["graph_distance_pre"] = 10

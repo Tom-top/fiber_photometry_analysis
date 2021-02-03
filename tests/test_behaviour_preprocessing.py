@@ -36,8 +36,11 @@ def test_combine_ethograms():
 
 # def test_trim_behavioral_data(bool_map, **kwargs):
 # def test_extract_manual_bouts(start, end, **kwargs):
+
+
 def test_merge_neighboring_bouts():
     pass
+
 # def test_detect_major_bouts(position_bouts, **kwargs):
 # def test_extract_peri_event_photmetry_data(position_bouts, **kwargs):
 # def test_reorder_by_bout_size(delta_f_around_peaks, length_bouts):

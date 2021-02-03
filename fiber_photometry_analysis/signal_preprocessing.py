@@ -9,6 +9,7 @@ Created on Mon Oct 19 10:08:31 2020
 import os
 
 import numpy as np
+import pandas as pd
 
 from scipy.interpolate import interp1d
 
@@ -38,12 +39,13 @@ def extract_raw_data(file, **kwargs):
     """
 
     print("\nExtracting raw data for Isosbestic and Calcium recordings !")
-
+    channel_isosbestic = kwargs["channel_isosbestic"]
+    channel_calcium = kwargs["channel_calcium"]
+    print("Isosbestic channel : {}, Calcium channel : {}".format(channel_isosbestic, channel_calcium))
     photometry_data = np.load(file)  # Load the NPY file
-
     x = photometry_data[0]  # time to be extracted
-    isosbestic_adjusted = photometry_data[1]  # data compressed in time
-    calcium_adjusted = photometry_data[2]  # data compressed in time
+    isosbestic_adjusted = photometry_data[channel_isosbestic]  # data compressed in time
+    calcium_adjusted = photometry_data[channel_calcium]  # data compressed in time
     plot_data_pair(calcium_adjusted, isosbestic_adjusted, 'raw', kwargs, x, units='mV', to_kilo=True)
 
     return x, isosbestic_adjusted, calcium_adjusted
@@ -128,10 +130,20 @@ def find_baseline_and_crop(x, isosbestic, calcium, **kwargs):
     
     print("\nStarting baseline computation for Isosbestic and Calcium signals !")
 
-    x = crop_signal(x, int(kwargs["cropping_window"]))
+    x = crop_signal(x,\
+                    kwargs["recording_sampling_rate"],\
+                    crop_start=kwargs["crop_start"],\
+                    crop_end=kwargs["crop_end"])
     x = x - x[0]
-    isosbestic = crop_signal(isosbestic, int(kwargs["cropping_window"]))
-    calcium = crop_signal(calcium, int(kwargs["cropping_window"]))
+    isosbestic = crop_signal(isosbestic,\
+                             kwargs["recording_sampling_rate"],\
+                             crop_start=kwargs["crop_start"],\
+                             crop_end=kwargs["crop_end"])
+    calcium = crop_signal(calcium, \
+                          kwargs["recording_sampling_rate"], \
+                          crop_start=kwargs["crop_start"],\
+                          crop_end=kwargs["crop_end"])
+
     isosbestic_fc = baseline_asymmetric_least_squares_smoothing(isosbestic, kwargs["lambda"], kwargs["p"])
     calcium_fc = baseline_asymmetric_least_squares_smoothing(calcium, kwargs["lambda"], kwargs["p"])
 
@@ -336,8 +348,9 @@ def load_photometry_data(file, **kwargs):
                 OR
                 dFF (arr) = Relative changes of fluorescence over time 
     """
-    
-    x0, isosbestic, calcium = extract_raw_data(file, **kwargs)
+
+    x0, isosbestic, calcium = extract_raw_data(file,
+                                               **kwargs)
 
     x1, isosbestic_smoothed, calcium_smoothed = smooth(x0, isosbestic, calcium, **kwargs)
     
@@ -346,9 +359,17 @@ def load_photometry_data(file, **kwargs):
                                                                                                             calcium_smoothed,
                                                                                                             **kwargs)
     
-    isosbestic_corrected, calcium_corrected = baseline_correction(x2, isosbestic_cropped, calcium_cropped, function_isosbestic, function_calcium, **kwargs)
+    isosbestic_corrected, calcium_corrected = baseline_correction(x2,
+                                                                  isosbestic_cropped,
+                                                                  calcium_cropped,
+                                                                  function_isosbestic,
+                                                                  function_calcium,
+                                                                  **kwargs)
 
-    isosbestic_standardized, calcium_standardized = standardization(x2, isosbestic_corrected, calcium_corrected, **kwargs)
+    isosbestic_standardized, calcium_standardized = standardization(x2,
+                                                                    isosbestic_corrected,
+                                                                    calcium_corrected,
+                                                                    **kwargs)
 
     isosbestic_fitted = interchannel_regression(isosbestic_standardized, calcium_standardized, **kwargs)
         
@@ -357,6 +378,44 @@ def load_photometry_data(file, **kwargs):
     dF = dFF(x2, isosbestic_fitted, calcium_standardized, **kwargs)
     
     time_lost = (len(x0) - len(x2))/kwargs["recording_sampling_rate"]
+
+    raw_isosbestic_cropped, raw_calcium_cropped =\
+    [crop_signal(i, kwargs["recording_sampling_rate"], crop_start=kwargs["crop_start"], crop_end=kwargs["crop_end"])\
+    for i in [isosbestic, calcium]]
+
+    df_isosbestic = pd.DataFrame({"time": x2,
+                                "raw_isosbestic_cropped": raw_isosbestic_cropped,
+                                "isosbestic_cropped" : isosbestic_cropped,
+                                "isosbestic_corrected" : isosbestic_corrected,
+                                "isosbestic_standardized" : isosbestic_standardized,
+                                "isosbestic_fitted" : isosbestic_fitted,
+                                })
+
+    df_calcium = pd.DataFrame({"time": x2,
+                              "raw_calcium_cropped": raw_isosbestic_cropped,
+                              "calcium_cropped": isosbestic_cropped,
+                              "calcium_cropped": isosbestic_corrected,
+                              "calcium_standardized": isosbestic_standardized,
+                              })
+
+    df_deltaf = pd.DataFrame({"time": x2,
+                               "dF": dF,
+                               })
+
+    df = pd.DataFrame({"time": x2,
+                    "raw_isosbestic_cropped": raw_isosbestic_cropped,
+                    "isosbestic_cropped" : isosbestic_cropped,
+                    "isosbestic_corrected" : isosbestic_corrected,
+                    "isosbestic_standardized" : isosbestic_standardized,
+                    "isosbestic_fitted" : isosbestic_fitted,
+                    "raw_calcium_cropped": raw_isosbestic_cropped,
+                    "calcium_cropped": isosbestic_cropped,
+                    "calcium_cropped": isosbestic_corrected,
+                    "calcium_standardized": isosbestic_standardized,
+                    "dF": dF,
+                    })
+    #df = pd.DataFrame({'idx': [1, 2, 3], 'dfs': [df_isosbestic, df_calcium, df_deltaf]})
+    df.to_feather(os.path.join(kwargs["save_dir"], "photometry_data.ftr"))
         
     data = {
         "raw": {"x": x0,

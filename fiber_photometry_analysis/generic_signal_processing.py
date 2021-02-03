@@ -106,7 +106,7 @@ def baseline_asymmetric_least_squares_smoothing(source, l, p, n_iter=10):
     return sink
 
 
-def crop_signal(signal, window):
+def crop_signal(signal, sampling_rate, crop_start=0, crop_end=None):
     """Small routine to trim the begining and the end of a recording to filter
     artifacts.
 
@@ -116,5 +116,7 @@ def crop_signal(signal, window):
     Returns :   sink (arr) = The cropped signal
     """
 
-    window = int(window)
-    return signal if window == 0 else signal[window:-window]
+    crop_start = int(crop_start)*sampling_rate
+    crop_end = -int(crop_end)*sampling_rate if crop_end is not None else crop_end
+
+    return signal if crop_start == 0 and crop_end == 0 else signal[crop_start:crop_end]

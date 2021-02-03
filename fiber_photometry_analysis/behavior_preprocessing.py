@@ -38,7 +38,7 @@ def extract_behavior_data(file_path, behaviour_name):
     # df = pd.read_excel(file_path, header=None)  # FIXME: replace with rewrite binary dataframe
     df = pd.read_csv(file_path, sep='\t', header=None)
     starts = extract_row(df, "tStart{0}".format(behaviour_name))
-    ends = extract_row(df, "tStart{0}".format(behaviour_name))
+    ends = extract_row(df, "tEnd{0}".format(behaviour_name))
     return starts, ends
 
 
@@ -226,9 +226,9 @@ def merge_neighboring_bouts(position_bouts, max_bout_gap, total_length):
     down_times = get_down_durations(event_starts, event_ends, total_length)
     short_down_time_ranges = extract_short_down_time_ranges(event_starts, event_ends,
                                                             down_times, total_length, max_bout_gap)
-    new_ranges =  # FIXME:
-    bouts_length = new_ranges[:, 1] - new_ranges[:, 0]
-    return new_ranges, bouts_length
+    # new_ranges =  # FIXME:
+    # bouts_length = new_ranges[:, 1] - new_ranges[:, 0]
+    # return new_ranges, bouts_length
 
 
 def set_ranges_high(src_arr, ranges):

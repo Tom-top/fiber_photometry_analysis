@@ -35,16 +35,17 @@ class Coordinates:
 
 # Setting the working directory and the related files
 experiment = "210121"
-mouse = "207_0000"
-analysis_folder = os.path.normpath('~/photometry_analysis')  # TODO: change
-working_directory = "/raid/Photometry/210121"
+mouse = "207_0017"
+working_directory = "/raid/Photometry/{}".format(experiment)
+#analysis_folder = os.path.normpath('~/photometry_analysis')  # TODO: change
+analysis_folder = os.path.join(working_directory, "photometry_analysis")
 
 files = utils.set_file_paths(working_directory, experiment, mouse)
 photometry_file_csv, video_file, behavior_automatic_file, behavior_manual_file, saving_directory = files
 
 params = parameters.set_parameters(files, allow_downsampling=True)
 cage_coordinates = Coordinates(x1=80, y1=62, x2=844, y2=402)
-params["behavior_to_segment"] = "Behavior1"
+params["behavior_to_segment"] = "Nesting"
 max_bout_gap = 2  # TODO: inline
 params["peak_merging_distance"] = max_bout_gap  # TODO remove
 params["minimal_bout_length"] = 1

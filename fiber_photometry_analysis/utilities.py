@@ -212,4 +212,4 @@ def offset(value, offset, sign):  # FIXME: shadows name
 
 def replace_ext(file_path, file_ext):  # TODO: check if exists
     return os.path.join(os.path.dirname(file_path),
-                        os.path.basename(file_path).split(".")[0] + ".".format(file_ext))
+                        "{}.{}".format(os.path.basename(file_path).split(".")[0], file_ext))

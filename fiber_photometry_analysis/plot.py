@@ -355,7 +355,7 @@ def sub_plot(data, x, xticks, xticklabels, ax, laser, label, kwargs, add_zero_li
     plot_handle, = ax.plot(x, data, alpha=0.8, c=kwargs["photometry_pp"][laser], lw=line_width)
     plot_handles = [plot_handle]
     labels = [label]
-    if baseline:
+    if baseline is not None:
         plot_handle_2, = ax.plot(x, baseline, alpha=0.8, c="orange", lw=2)
         plot_handles.append(plot_handle_2)
         labels.append('baseline')

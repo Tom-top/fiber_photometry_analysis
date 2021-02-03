@@ -38,7 +38,7 @@ segmentation = adjust_segmentation_to_photometry(segmentation, video_duration, p
 
 photometry_smoothed = smooth_photometry_data(photometry)
 photometry_corrected = baseline_correction_photometry_data(photometry_smoothed)
-photometry_cropped = crop_data(photometry_corrected)
+photometry_cropped = crop_data(photometry_corrected) # WARNING: Crop after baseline correction to avoid border effects
 
 # segmentation_cropped = crop_data(segmentation)
 

@@ -18,13 +18,16 @@ def set_parameters(files, allow_downsampling=True):
     recording_duration, recording_sampling_rate, downsampling_factor = sampling_info  # Get metadata from the photometry file
     
     general_args = {
+        "channel_isosbestic" : 2,
+        "channel_calcium" : 1,
         "recording_sampling_rate": recording_sampling_rate,  # Sampling rate of the photometry system
         "recording_duration": recording_duration,  # The time of recording according to the photometry dataset (s)
         "smoothing_window": int(recording_sampling_rate),  # The window used to smooth the raw signal
         "moving_average_window": int(recording_sampling_rate) * 60,  # The window used to estimate the baseline of each signal
-        "cropping_window": 1,  # The time to crop at the begining and the end of the video int(recording_sampling_rate)*30
+        "crop_start": 1,  # The time to crop at the begining and the end of the video int(recording_sampling_rate)*30
+        "crop_end": 1,
         "down_sampling_factor_photometry": downsampling_factor,
-        "lambda": 10**11,  # Lambda parameter for the asymmetric least squares smoothing algorithm
+        "lambda": 10**12,  # Lambda parameter for the asymmetric least squares smoothing algorithm
         "p": 0.01,  # Pparameter for the asymmetric least squares smoothing algorithm
     }
     

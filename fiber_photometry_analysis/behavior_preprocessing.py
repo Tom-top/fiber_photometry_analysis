@@ -12,6 +12,18 @@ import pandas as pd
 from fiber_photometry_analysis import utilities as utils
 from fiber_photometry_analysis.exceptions import FiberPhotometryDimensionError
 
+def extract_row(data_frame, row_name):
+    """
+    Extract the row by name in the behaviour dataframe
+
+    :param pd.DataFrame data_frame:
+    :param str row_name:
+    :return:
+    """
+    row = data_frame[data_frame[0] == row_name].values
+    row_values = row[0][1:].astype(np.float64)
+    row_values = row_values[row_values > 0]
+    return row_values
 
 
 def extract_behavior_data(file_path, behaviour_name):
@@ -23,15 +35,11 @@ def extract_behavior_data(file_path, behaviour_name):
             end (arr) = the ending timepoints for the behavioral bouts
     """
     
-    f = pd.read_excel(file, header=None)  # FIXME: replace with rewrite binary dataframe
-    
-    start_pos = np.where(f[0] == "tStart{0}".format(kwargs["behavior_to_segment"]))[0]
-    end_pos = np.where(f[0] == "tEnd{0}".format(kwargs["behavior_to_segment"]))[0]
-    
-    start = f.iloc[start_pos[0]][1:][f.iloc[start_pos[0]][1:] > 0]
-    end = f.iloc[end_pos[0]][1:][f.iloc[end_pos[0]][1:] > 0]
-    
-    return start, end
+    # df = pd.read_excel(file_path, header=None)  # FIXME: replace with rewrite binary dataframe
+    df = pd.read_csv(file_path, sep='\t', header=None)
+    starts = extract_row(df, "tStart{0}".format(behaviour_name))
+    ends = extract_row(df, "tStart{0}".format(behaviour_name))
+    return starts, ends
 
 
 def estimate_minimal_resolution(starts, ends):
@@ -98,11 +106,11 @@ def trim_behavioral_data(mask, **params):
     :return: a trimmed mask
     """
 
-    # The duration that is cropped from the photometry data because of initial fluo drop
-    sampling = 1 / kwargs["recording_sampling_rate"]
-    time_lost_start_in_points = int(kwargs["photometry_data"]["start_time_lost"] * sampling)
-    time_lost_end_in_points = int(kwargs["photometry_data"]["start_time_lost"] * sampling)
-    return bool_map[time_lost_start_in_points:-time_lost_end_in_points]
+    sampling = 1 / params["recording_sampling_rate"]
+    # The duration that is cropped from the photometry data because of initial fluorescence drop
+    time_lost_start_in_points = int(params["photometry_data"]["start_time_lost"] * sampling)
+    time_lost_end_in_points = int(params["photometry_data"]["start_time_lost"] * sampling)  # TODO: make separate variable
+    return mask[time_lost_start_in_points: - time_lost_end_in_points]
 
 
 def extract_manual_bouts(starts, ends):  # FIXME: rename
@@ -215,6 +223,12 @@ def merge_neighboring_bouts(position_bouts, max_bout_gap, total_length):
     event_starts = position_bouts[:, 0]
     event_ends = position_bouts[:, 1]
 
+    down_times = get_down_durations(event_starts, event_ends, total_length)
+    short_down_time_ranges = extract_short_down_time_ranges(event_starts, event_ends,
+                                                            down_times, total_length, max_bout_gap)
+    new_ranges =  # FIXME:
+    bouts_length = new_ranges[:, 1] - new_ranges[:, 0]
+    return new_ranges, bouts_length
 
 
 def set_ranges_high(src_arr, ranges):

@@ -7,23 +7,33 @@ Created on Tue Oct 20 13:35:52 2020
 """
 
 import os
+from dataclasses import dataclass
+
 
 import matplotlib.pyplot as plt
 
 import moviepy.editor as mpy
-    
+import numpy as np
+
 from fiber_photometry_analysis import utilities as utils
 from fiber_photometry_analysis import io
 from fiber_photometry_analysis import signal_preprocessing as preproc
 from fiber_photometry_analysis import behavior_preprocessing as behav_preproc
-from fiber_photometry_analysis import parameters as params
+from fiber_photometry_analysis import parameters
 from fiber_photometry_analysis import plot
 from fiber_photometry_analysis import video_plot as v_plot
+from fiber_photometry_analysis.behavior_preprocessing import set_ranges_high
 
 
-#%% ===========================================================================
+@dataclass
+class Coordinates:
+    x1: int
+    x2: int
+    y1: int
+    y2: int
+
+
 # Setting the working directory and the related files
-# =============================================================================
 experiment = "210121"
 mouse = "207_0000"
 analysis_folder = os.path.normpath('~/photometry_analysis')  # TODO: change
@@ -32,98 +42,71 @@ working_directory = "/raid/Photometry/210121"
 files = utils.set_file_paths(working_directory, experiment, mouse)
 photometry_file_csv, video_file, behavior_automatic_file, behavior_manual_file, saving_directory = files
 
-#%% ===========================================================================
-# Loading all the parameters
-# =============================================================================
-args = params.set_parameters(files, allow_downsampling=True)  # Loads all the parameters for the analysis
+params = parameters.set_parameters(files, allow_downsampling=True)
+cage_coordinates = Coordinates(x1=80, y1=62, x2=844, y2=402)
+params["behavior_to_segment"] = "Behavior1"
+max_bout_gap = 2  # TODO: inline
+params["peak_merging_distance"] = max_bout_gap  # TODO remove
+params["minimal_bout_length"] = 1
+params["peri_event"]["graph_distance_pre"] = 10
+params["peri_event"]["graph_distance_post"] = 10
+params["peri_event"]["style"] = "average"
+params["peri_event"]["individual_color"] = False
+params["peri_event"]["graph_auc_pre"] = 2
+params["peri_event"]["graph_auc_post"] = 2
+params["video_photometry"]["resize_video"] = 1.
+params["video_photometry"]["global_acceleration"] = 20
 
-#%% ===========================================================================
-# Conversion of the photometry data into a numpy format
-# =============================================================================
-photometry_file_npy = io.convert_to_npy(photometry_file_csv, **args)  # Convert CSV file to NPY if needed
-
-#%% ===========================================================================
-# Preprocessing of the photometry data
-# =============================================================================
-photometry_data = preproc.load_photometry_data(photometry_file_npy, **args)  # Preprocesses the photometry data at once
-args["photometry_data"] = photometry_data  # Adds a new parameter containing all the photometry data
-
-#%% ===========================================================================
-# Reading the Video data
-# =============================================================================
-video_clip = mpy.VideoFileClip(video_file).subclip(t_start=args["video_start"], t_end=args["video_end"])  # Loads the video
-plt.imshow(video_clip.get_frame(0))  # [OPTIONAL] Displays the first frame of the video
-
-#%% ===========================================================================
-# Cropping the video field of view (for future display)
-# =============================================================================
-video_clip_cropped = video_clip.crop(x1=80, y1=62, x2=844, y2=402)  # Crops the video file to the cage only
-plt.imshow(video_clip_cropped.get_frame(0))  # [OPTIONAL] Displays the first frame of the cropped video
-
-#%% ===========================================================================
-# Importing behavioral data
-# =============================================================================
-args["behavior_to_segment"] = "Behavior1"
-
-start, end = behav_preproc.extract_behavior_data(behavior_manual_file, **args)
-args["resolution_data"] = behav_preproc.estimate_minimal_resolution(start, end)
-trimmed_bool_map = behav_preproc.trim_behavioral_data(bool_map, **args)  # Trims the behavioral data to fit the pre-processed photometry data
-position_bouts, length_bouts = behav_preproc.extract_manual_bouts(start_trimmed, end_trimmed, **args)  # Extracts the raw behavioral events
+photometry_file_npy = io.convert_to_npy(photometry_file_csv, **params)
+photometry_data = preproc.load_photometry_data(photometry_file_npy, **params)  # dict of different preprocessed data
+# FIXME: remove from metadata
+params["photometry_data"] = photometry_data  # Adds a new parameter containing all the photometry data
 
 
-#%% ===========================================================================
-# Merge behavioral bouts that are close together
-# =============================================================================
-args["peak_merging_distance"] = 2
-position_bouts_merged, length_bouts_merged = behav_preproc.merge_neighboring_bouts(position_bouts, **args)
-
-
-#%% ===========================================================================
-# Detect major behavioral bouts based on size
-# =============================================================================
-args["minimal_bout_length"] = 1
-position_major_bouts, length_major_bouts, position_seed_bouts, length_seed_bouts = behav_preproc.detect_major_bouts(position_bouts_merged, **args) #Extracts major bouts from the data
-
-
-#%% ===========================================================================
+starts, ends = behav_preproc.extract_behavior_data(behavior_manual_file, params["behavior_to_segment"])  # REFACTOR: replace by ranges
+params["resolution_data"] = behav_preproc.estimate_minimal_resolution(starts, ends)
+bool_map = set_ranges_high(np.zeros(n_points), np.column_stack((starts, ends)))  # FIXME: needs starts, ends in p not t
+trimmed_bool_map = behav_preproc.trim_behavioral_data(bool_map, **params)
+position_bouts, length_bouts = behav_preproc.extract_manual_bouts(starts_trimmed, ends_trimmed)
+utils.print_in_color("\nBehavioral data extracted. Behavior = {0}".format(params["behavior_to_segment"]), "GREEN")
 
 plot.check_delta_f_with_behavior([position_bouts], [length_bouts], color="blue", name="dF_&_raw_behavior", **params)  # FIXME: could use boolean map FIXME: remove ampersand
+
+
+position_bouts_merged, length_bouts_merged = behav_preproc.merge_neighboring_bouts(position_bouts,
+                                                                                   max_bout_gap, trimmed_bool_map.size)
 plot.check_delta_f_with_behavior([position_bouts_merged], [length_bouts_merged],  # FIXME: could use boolean map
                                  color="blue", name="dF_&_merged_behavior", **params)  # FIXME: remove ampersand
 
+major_bouts_info = behav_preproc.detect_major_bouts(position_bouts_merged, params['minimal_bout_length'])
+position_major_bouts, length_major_bouts, position_seed_bouts, length_seed_bouts = major_bouts_info
 plot.check_delta_f_with_behavior([position_major_bouts, position_seed_bouts], [length_major_bouts, length_seed_bouts],
                                  color=["blue", "red"], name="dF_&_filtered_behavior", **params)  # FIXME: remove ampersand
 
 
 # Extract photometry data around major bouts of behavior
-# =============================================================================
-args["peri_event"]["graph_distance_pre"] = 10
-args["peri_event"]["graph_distance_post"] = 10
-dF_around_bouts = behav_preproc.extract_peri_event_photmetry_data(position_major_bouts, **args)
-dF_around_bouts_ordered, length_bouts_ordered = behav_preproc.reorder_by_bout_size(dF_around_bouts, length_major_bouts)
+delta_f_around_bouts = behav_preproc.extract_peri_event_photometry_data(position_major_bouts, **params)
+delta_f_around_bouts_ordered, length_bouts_ordered = behav_preproc.reorder_by_bout_size(delta_f_around_bouts,
+                                                                                        length_major_bouts)
+plot.peri_event_plot(delta_f_around_bouts_ordered, length_bouts_ordered, cmap="inferno", **params)  # cividis, viridis
+plot.peri_event_bar_plot(delta_f_around_bouts_ordered, **params)
 
-args["peri_event"]["style"] = "average"
-args["peri_event"]["individual_color"] = False
-plot.peri_event_plot(dF_around_bouts_ordered, length_bouts_ordered, cmap="inferno", **args)  # cividis, viridis
-
-#%% ===========================================================================
-# Generate bar plot for the peri-event data
-# =============================================================================
-args["peri_event"]["graph_auc_pre"] = 2
-args["peri_event"]["graph_auc_post"] = 2
-plot.peri_event_bar_plot(dF_around_bouts_ordered, **args)
-
-#%% ===========================================================================
 # Creates a video with aligned photometry and behavior
-# =============================================================================
-args["video_photometry"]["resize_video"] = 1.
-args["video_photometry"]["global_acceleration"] = 20
-video_clip_trimmed = video_clip_cropped.subclip(t_start=int(args["photometry_data"]["time_lost"]/2),
-                                                t_end=args["video_duration"]-int(args["photometry_data"]["time_lost"]/2))
-
-behavior_data_x = behav_preproc.create_bool_map(position_major_bouts, args["video_duration"], **args)
-behavior_data_x_trimmed = behavior_data_x[0: int(round((args["video_duration"] - int(args["photometry_data"]["time_lost"])) * args["recording_sampling_rate"]))]
+behavior_data_x = behav_preproc.create_bool_map(position_major_bouts,
+                                                params["video_duration"],
+                                                1 / params["recording_sampling_rate"])
+utils.print_in_color("\nBehavioral data extracted. Behavior = {0}".format(params["behavior_to_segment"]), "GREEN")
+i = int(round((params["video_duration"] - int(params["photometry_data"]["time_lost"])) * params["recording_sampling_rate"]))  # FIXME: simplify
+behavior_data_x_trimmed = behavior_data_x[0: i]
 
 y_data = [behavior_data_x_trimmed, photometry_data["dFF"]["dFF"]]
 
-v_plot.live_video_plot(video_clip_trimmed, args["photometry_data"]["dFF"]["x"], y_data, **args)
+half_time_lost = int(params["photometry_data"]["time_lost"] / 2)  # TODO: make asymetric (split start and end vars)
+video_clip = mpy.VideoFileClip(video_file).subclip(t_start=params["video_start"], t_end=params["video_end"])
+plt.imshow(video_clip.get_frame(0))
+video_clip_cropped = video_clip.crop(x1=cage_coordinates.x1, y1=cage_coordinates.y1,
+                                     x2=cage_coordinates.x2, y2=cage_coordinates.y2)
+plt.imshow(video_clip_cropped.get_frame(0))
+video_clip_trimmed = video_clip_cropped.subclip(t_start=half_time_lost,
+                                                t_end=params["video_duration"] - half_time_lost)
+v_plot.live_video_plot(video_clip_trimmed, params["photometry_data"]["dFF"]["x"], y_data, **params)

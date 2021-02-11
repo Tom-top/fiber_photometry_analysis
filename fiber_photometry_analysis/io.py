@@ -17,7 +17,7 @@ from fiber_photometry_analysis import utilities as utils
 from fiber_photometry_analysis import signal_preprocessing as preproc
 
 
-def convert_to_npy(file, **kwargs):
+def deprecated_convert_to_npy(file, **kwargs):
     """Function that takes a csv file as an input, extract useful data from it
     and saves it as a npy file
     
@@ -75,6 +75,30 @@ def convert_to_npy(file, **kwargs):
 
     return npy_file_path
 
+def doric_csv_to_dataframe(file, **args):
+    photometry_sheet = pd.read_csv(file, header=1, usecols=np.arange(0, 3))  # Load the data
+    
+    non_mask_time = np.isnan(photometry_sheet["Time(s)"])  # Filtering NaN values (missing values)
+    non_nan_mask_isosbestic = np.isnan(photometry_sheet["AIn-1 - Dem (AOut-{})".format(args["isosbestic_channel"])])  # Filtering NaN values (missing values)
+    non_nan_mask_calcium = np.isnan(photometry_sheet["AIn-1 - Dem (AOut-{})".format(args["calcium_channel"])])  # Filtering NaN values (missing values)
+    non_nan_mask = ~np.logical_or(np.logical_or(non_mask_time, non_nan_mask_isosbestic), non_nan_mask_calcium)
+    
+    filtered_photometry_sheet = photometry_sheet[non_nan_mask]  # Filter the data
+    
+    seconds_remaining = len(filtered_photometry_sheet) % kwargs["recording_sampling_rate"]
+    photometry_data_cropped = photometry_data_npy[:int(len(filtered_photometry_sheet) - seconds_ramaining)]
+    photometry_data_transposed = np.transpose(photometry_data_cropped)  # Transpose data
+    
+    return photometry_data_transposed
+
+def convert_to_feather(file, recompute=True, **kwargs):
+    
+    feather_file_path = os.path.join(os.path.dirname(file), "{0}.feather".format(os.path.basename(file).split(".")[0]))
+    if os.path.exists(feather_file_path):
+        if recompute:
+            pass
+    else:
+        pass
 
 def get_recording_duration_and_sampling_rate(file, allow_downsampling=True):
     """Function that takes a csv file as an input, extract the time data from it,

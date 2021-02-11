@@ -23,8 +23,14 @@ def validate_path(file_path):
     if not os.path.exists(file_path):
         raise FiberFotometryIoFileNotFoundError(file_path)
 
+def convert_photometry_data_to_dataframe(file_path, **kwargs):
+    photometry_data = pd.read_csv(file_path, header=1, usecols=np.arange(0, 3))
+    filtered_data = photometry_data.dropna(thresh=1)
+    print(len(photometry_data))
+    print(len(filtered_data))
+    return filtered_data
 
-def convert_to_npy(file_path, **kwargs):  # FIXME: replace by save to dataframe binary
+def deprecated_convert_to_npy(file_path, **kwargs):  # FIXME: replace by save to dataframe binary
     """Function that takes a csv file as an input, extract useful data from it
     and saves it as a npy file
     

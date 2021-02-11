@@ -25,11 +25,11 @@ from fiber_photometry_analysis import video_plot as v_plot
 #%% ===========================================================================
 # Setting the working directory and the related files
 # =============================================================================
-experiment = "201109"
-mouse = "112"
-analysis_folder = os.path.normpath('~/photometry_analysis')  # TODO: change
+experiment = "yymmdd"
+mouse = "test"
+analysis_folder = "/Users/tomtop/Documents/Github/Fiber_Photometry_Analysis"  # TODO: change
 
-working_directory = os.path.join(analysis_folder, "Test/{0}/{1}".format(experiment, mouse))
+working_directory = os.path.join(analysis_folder, "{0}/{1}".format(experiment, mouse))
 
 files = utils.set_file_paths(working_directory, experiment, mouse)
 photometry_file_csv, video_file, behavior_automatic_file, behavior_manual_file, saving_directory = files

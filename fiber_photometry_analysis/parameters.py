@@ -17,6 +17,8 @@ def set_parameters(files, allow_downsampling=True):
                                                                                                                    allow_downsampling=allow_downsampling) #Get metadata from the photometry file
     
     general_args = {
+        "isosbestic_channel" : 1,
+        "calcium_channel" : 2,
         "recording_sampling_rate": recording_sampling_rate,  # Sampling rate of the photometry system
         "recording_duration": recording_duration,  # The time of recording according to the photometry dataset (s)
         "smoothing_window": int(recording_sampling_rate),  # The window used to smooth the raw signal
@@ -93,7 +95,7 @@ def set_parameters(files, allow_downsampling=True):
         """If you like to change some of the parameters you can directly modify them in
         the 'parameters.py' file or change them by calling : 'args['arg'] = new_value' with
         arg corresponding to the argument you desire to change, and new_value the new value
-        of the argument in question", 'GREEN'"""
+        of the argument in question""", 'GREEN'
     )
     
     return args

@@ -6,244 +6,309 @@ Created on Fri Oct 23 16:16:29 2020
 @author: thomas.topilko
 """
 
-from functools import reduce
-
 import numpy as np
 import pandas as pd
 
 from fiber_photometry_analysis import utilities as utils
+from fiber_photometry_analysis.exceptions import FiberPhotometryDimensionError
+
+def extract_row(data_frame, row_name):
+    """
+    Extract the row by name in the behaviour dataframe
+
+    :param pd.DataFrame data_frame:
+    :param str row_name:
+    :return:
+    """
+    row = data_frame[data_frame[0] == row_name].values
+    row_values = row[0][1:].astype(np.float64)
+    row_values = row_values[row_values > 0]
+    return row_values
 
 
-def extract_behavior_data(file, **kwargs):
+def extract_behavior_data(file_path, behaviour_name):
     """Extracts the raw behavior data from an excel file and cleans it.
-    
-    Args :  file (str) = the path to the excel file
-            kwargs (dict) = dictionnary with additional parameters
 
-    Returns : start (arr) = the starting timepoints for the behavioral bouts
-              end (arr) = the ending timepoints for the behavioral bouts
-    """
-    
-    f = pd.read_excel(file, header=None)
-    
-    start_pos = np.where(f[0] == "tStart{0}".format(kwargs["behavior_to_segment"]))[0]
-    end_pos = np.where(f[0] == "tEnd{0}".format(kwargs["behavior_to_segment"]))[0]
-    
-    start = f.iloc[start_pos[0]][1:][f.iloc[start_pos[0]][1:] > 0]
-    end = f.iloc[end_pos[0]][1:][f.iloc[end_pos[0]][1:] > 0]
-    
-    return start, end
-
-
-def estimate_minimal_resolution(start, end):
-    """Estimates the minimal time increment needed to fully capture the data.
-    
-    Args :  start (arr) = the starting timepoints for the behavioral bouts
+    :param str file_path:  the path to the excel file
+    :param str behaviour_name: The name of the behaviour type to be analysed
+    :return:start (arr) = the starting timepoints for the behavioral bouts
             end (arr) = the ending timepoints for the behavioral bouts
-
-    Returns : minimal_resolution (float) = the starting timepoints for the behavioral bouts
     """
     
-    minimal_resolution = 1/min(end-start)
+    # df = pd.read_excel(file_path, header=None)  # FIXME: replace with rewrite binary dataframe
+    df = pd.read_csv(file_path, sep='\t', header=None)
+    starts = extract_row(df, "tStart{0}".format(behaviour_name))
+    ends = extract_row(df, "tEnd{0}".format(behaviour_name))
+    return starts, ends
+
+
+def estimate_minimal_resolution(starts, ends):
+    """Estimates the minimal time increment needed to fully capture the data.
+
+    :param np.array starts: the starting timepoints for the behavioral bouts
+    :param np.array ends:  the ending timepoints for the behavioral bouts
+    :return:  minimal_resolution: the starting timepoints for the behavioral bouts
+    :rtype: float
+    """
     
-    utils.print_in_color("The smallest behavioral bout is {0}s long".format(1 / minimal_resolution), "GREEN")
+    minimal_resolution = 1 / min(ends - starts)  # FIXME: depends on start high start low. use durations function instead
+    
+    utils.print_in_color("The smallest behavioral bout is {}s long".format(1 / minimal_resolution), "GREEN")
     
     return minimal_resolution
 
 
-def create_bool_map(start, end, **kwargs):
+def create_bool_map(bouts_positions, total_duration, sample_interval):
     """Creates a boolean map of the time during which the animal performs a given behavior.
-    
-    Args :  start (arr) = the starting timepoints for the behavioral bouts
-            end (arr) = the ending timepoints for the behavioral bouts
 
-    Returns : bool_map (arr) = the boolean map of the time during which the animal performs the behavior
+    :param np.array bouts_positions: the starting/ending timepoints for the behavioral bouts
+    :param int total_duration:
+    :param float sample_interval:
+    :return: bool_map = the boolean map of the time during which the animal performs the behavior
+    :rtype: np.array
     """
+    n_points = int(total_duration * sample_interval)
+    bool_map = np.zeros(n_points)
+    for bout in bouts_positions:  # TODO: check slices
+        start_s, end_s = bout
+        start_p = start_s * sample_interval
+        end_p = end_s * sample_interval
+        bool_map[start_p: end_p] = 1
     
-    bool_map = []
-
-    for s, e in zip(start, end):
-        for i in np.arange(len(bool_map)/kwargs["recording_sampling_rate"], s, 1/kwargs["recording_sampling_rate"]):
-            bool_map.append(False)  # FIXME: extend not append
-        for i in np.arange(s, e, 1/kwargs["recording_sampling_rate"]):
-            bool_map.append(True)
-
-    for i in np.arange(i+(1/kwargs["recording_sampling_rate"]), round(kwargs["video_end"]), 1/kwargs["recording_sampling_rate"]):
-        bool_map.append(False)
-        
-    if i != round(kwargs["video_end"]):
-        if not bool_map[-1]:
-            bool_map.append(False)
-        else:
-            bool_map.append(True)
-      
-    print("\n")
-    utils.print_in_color("Behavioral data extracted. Behavior = {0}".format(kwargs["behavior_to_segment"]), "GREEN")
-    
-    return bool_map
+    return bool_map.astype(bool)
 
 
-def trim_behavioral_data(start, end, **kwargs):
+def combine_ethograms(ethogerams):
+    """
+    Combine the ethograms so that each ethogram gets it order in the list as the value in the resulting
+    combined ethogram
+
+    :param [np.array, np.array, ] ethogerams: A list of ethograms as boolean arrays
+    :return: combined ethogram
+    :rtype: np.array
+    """
+    if min([eth.size for eth in ethogerams]) != max([eth.size for eth in ethogerams]):
+        raise FiberPhotometryDimensionError('All ethograms must have same length')
+    out = np.array(ethogerams[0].size, dtype=np.int)
+    for i, ethogram in enumerate(ethogerams):
+        tmp = ethogram * (i+1)  # Give it the value of it's order in the list
+        out += tmp
+    return out
+
+
+def trim_behavioral_data(mask, **params):
     """Trims the behavioral data to fit the pre-processed photometry data.
-    
-    Args :  start (arr) = the starting timepoints for the behavioral bouts
-            end (arr) = the ending timepoints for the behavioral bouts
-            kwargs (dict) = dictionnary with additional parameters
+    It will remove the parts at the beginning and the end that correspond to the fluorescence
+    settling time
 
-    Returns : start (arr) = trimmed list of start and end of each behavioral bout
-              end (arr) = trimmed list of the length of each behavioral bout
+    :param np.array mask: A boolean array
+    :param dict params: dictionary with additional parameters
+    :return: a trimmed mask
     """
-    
-    half_time_lost = int(kwargs["photometry_data"]["time_lost"]/2)
-    
-    masks = [start > half_time_lost, end > half_time_lost,
-             start < kwargs["video_end"]-half_time_lost, end < kwargs["video_end"]-half_time_lost]
-    total_mask = reduce(np.logical_and, masks)
-    
-    start = start[total_mask] - half_time_lost
-    end = end[total_mask] - half_time_lost
-    
-    return start, end
+
+    sampling = 1 / params["recording_sampling_rate"]
+    # The duration that is cropped from the photometry data because of initial fluorescence drop
+    time_lost_start_in_points = int(params["photometry_data"]["start_time_lost"] * sampling)
+    time_lost_end_in_points = int(params["photometry_data"]["start_time_lost"] * sampling)  # TODO: make separate variable
+    return mask[time_lost_start_in_points: - time_lost_end_in_points]
 
 
-def extract_manual_bouts(start, end, **kwargs):
+def extract_manual_bouts(starts, ends):  # FIXME: rename
     """Extracts the time and length of each behavioral bout.
-    
-    Args :  start (arr) = the starting timepoints for the behavioral bouts
-            end (arr) = the ending timepoints for the behavioral bouts
-            kwargs (dict) = dictionnary with additional parameters
 
-    Returns : position_bouts (list) = list of start and end of each behavioral bout
-              length_bouts (list) = list of the length of each behavioral bout
+    :param np.array starts: the starting timepoints for the behavioral bouts
+    :param np.array ends: the ending timepoints for the behavioral bouts
+    :return: position_bouts np.array = list of start and end of each behavioral bout
+             length_bouts np.array = list of the length of each behavioral bout
+
     """
-    position_bouts = []
-    length_bouts = []
-    for s, e in zip(start, end):
-        position_bouts.append((s, e))
-        length_bouts.append(e-s)
-      
-    print("\n")
-    utils.print_in_color("Behavioral data extracted. Behavior = {0}".format(kwargs["behavior_to_segment"]), "GREEN")
-    
+    position_bouts = np.column_stack(starts, ends)
+    length_bouts = ends - starts
     return position_bouts, length_bouts
 
 
-def merge_neighboring_bouts(position_bouts, **kwargs):
-    """Algorithm that merges behavioral bouts that are close together.
-    
-    Args :  position_bouts (arr) = list of start and end of each behavioral bout
-            kwargs (dict) = dictionnary with additional parameters
-
-    Returns : position_bouts_merged (list) = list of merged start and end of each behavioral bout
-              length_bouts_merged (list) = list of the length of each merged behavioral bout
+def check_starts_high(event_starts, event_ends):
     """
-    
-    position_bouts_merged = []
-    length_bouts_merged = []
+    Checks whether the first event is already ongoing
 
-    merged = False
-    for i in np.arange(0, len(position_bouts) - 1, 1):
-        if not merged:
-            cur_bout = position_bouts[i]
-        
-        next_bout = position_bouts[i+1]
-        if next_bout[0] - cur_bout[1] <= kwargs["peak_merging_distance"]:
-            merged = True
-            cur_bout = (cur_bout[0], next_bout[1])
-            if i == len(position_bouts)-2:
-                position_bouts_merged.append(cur_bout)
-                length_bouts_merged.append(cur_bout[1] - cur_bout[0])
-        elif next_bout[0] - cur_bout[1] > kwargs["peak_merging_distance"]:
-            merged = False
-            position_bouts_merged.append(cur_bout)
-            length_bouts_merged.append(cur_bout[1] - cur_bout[0])
-            
-            if i == len(position_bouts)-2:
-                position_bouts_merged.append(next_bout)
-                length_bouts_merged.append(next_bout[1] - next_bout[0])
-                
-    print("\n")
-    utils.print_in_color("Merged neighboring peaks that were closer than {0}s away"
-                         .format(kwargs["peak_merging_distance"]), "GREEN")
-                
-    return position_bouts_merged, length_bouts_merged
+    :param np.array event_starts: the starting timepoints for the behavioral bouts
+    :param np.array event_ends: the ending timepoints for the behavioral bouts
+    :return:
+    """
+    return event_starts[0] < event_ends[0]
 
 
-def detect_major_bouts(position_bouts_merged, **kwargs):
-    """Algorithm that detects major behavioral bouts based on size. (Seeds are
+def check_ends_high(event_starts, event_ends):
+    """
+    Checks whether the last event is still ongoing
+
+    :param np.array event_starts: the starting timepoints for the behavioral bouts
+    :param np.array event_ends: the ending timepoints for the behavioral bouts
+    :return:
+    """
+    return event_starts[-1] > event_ends[-1]
+
+
+def get_up_durations(event_starts, event_ends, total_length):
+    """
+    Compute the duration of each event between starts and ends taking into account border cases
+    (i.e. ongoing events at the beginning and end)
+
+    :param np.array event_starts: the starting timepoints for the behavioral bouts
+    :param np.array event_ends: the ending timepoints for the behavioral bouts
+    :param int total_length: The size in points of the
+    :return:
+    """
+    if check_starts_high(event_starts, event_ends):
+        _event_ends = event_ends.copy()
+    else:
+        _event_ends = event_ends[1:]
+    if check_ends_high(event_starts, event_ends):
+        _event_ends = np.append(_event_ends, total_length)
+    return _event_ends - event_starts
+
+
+def get_down_durations(event_starts, event_ends, total_length):
+    """
+    Compute the duration of each inter-event (between ends and starts) taking into account border cases
+    (i.e. ongoing events at the beginning and end)
+
+    :param np.array event_starts: the starting timepoints for the behavioral bouts
+    :param np.array event_ends: the ending timepoints for the behavioral bouts
+    :param int total_length: The size in points of the
+    :return:
+    """
+    if check_starts_high(event_starts, event_ends):
+        _event_starts = event_starts[1:]
+    else:
+        _event_starts = event_starts.copy()
+    if not check_ends_high(event_starts, event_ends):
+        _event_starts = np.append(_event_starts, total_length)
+    return _event_starts - event_ends
+
+
+def extract_short_down_time_ranges(event_starts, event_ends, down_times, total_length, max_bout_gap):
+    """
+    Extract the ranges corresponding to inter-event of a duration below max_bout_gap
+
+    :param np.array event_starts: the starting timepoints for the behavioral bouts
+    :param np.array event_ends: the ending timepoints for the behavioral bouts
+    :param np.array down_times: the list of (start, end) of each inter-event
+    :param int total_length: The size of the source array
+    :param int max_bout_gap: The maximum number of points between 2 events
+    :return:
+    """
+    short_gaps_idx = np.where(down_times < max_bout_gap)[0]
+    if check_starts_high(event_starts, event_ends):
+        _event_starts = event_starts[1:]
+    else:
+        _event_starts = event_starts.copy()
+    if not check_ends_high(event_starts, event_ends):
+        _event_starts = np.append(_event_starts, total_length)
+    short_down_time_ranges = np.column_stack((event_ends[short_gaps_idx],
+                                              _event_starts[short_gaps_idx]))
+    return short_down_time_ranges
+
+
+def merge_neighboring_bouts(position_bouts, max_bout_gap, total_length):
+    """
+    Algorithm that merges behavioral bouts that are close together.
+
+    :param np.array position_bouts: list of start and end of each behavioral bout
+    :param int max_bout_gap: Maximum number of points between 2 bouts unless they get fused
+    :param int total_length: The size of the source array
+    :return: position_bouts_merged (list) = list of merged start and end of each behavioral bout
+             length_bouts_merged (list) = list of the length of each merged behavioral bout
+    """
+    event_starts = position_bouts[:, 0]
+    event_ends = position_bouts[:, 1]
+
+    down_times = get_down_durations(event_starts, event_ends, total_length)
+    short_down_time_ranges = extract_short_down_time_ranges(event_starts, event_ends,
+                                                            down_times, total_length, max_bout_gap)
+    # new_ranges =  # FIXME:
+    # bouts_length = new_ranges[:, 1] - new_ranges[:, 0]
+    # return new_ranges, bouts_length
+
+
+def set_ranges_high(src_arr, ranges):
+    """
+    Set the ranges specified by ranges (pairs of start, end) to 1 in src_arr (does a copy)
+
+    :param np.array src_arr: The Boolean array to modify
+    :param np.array ranges: a list of ranges (start, end)
+    :return:
+    """
+    out_arr = src_arr.copy()
+    for s, e in ranges:
+        out_arr[s:e] = 1
+    return out_arr
+
+
+def detect_major_bouts(position_bouts, min_bout_length):
+    """
+    Algorithm that detects major behavioral bouts based on size. (Seeds are
     behavioral bouts that are too short to be considered a "major" event)
-    
-    Args :  position_bouts_merged (arr) = list of merged start and end of each behavioral bout
-            kwargs (dict) = dictionnary with additional parameters
 
-    Returns : position_major_bouts (list) = list of start and end of each major behavioral bout
-              length_major_bouts (list) = list of the length of each major behavioral bout
-              position_seed_bouts (list) = list of start and end of each seed behavioral bout
-              length_seed_bouts (list) = list of the length of each seed behavioral bout
+    :param np.array position_bouts:  list of merged start and end of each behavioral bout
+    :param min_bout_length:
+    :return: position_major_bouts (list) = list of start and end of each major behavioral bout
+             length_major_bouts (list) = list of the length of each major behavioral bout
+             position_seed_bouts (list) = list of start and end of each seed behavioral bout
+             length_seed_bouts (list) = list of the length of each seed behavioral bout
     """
-    position_major_bouts = []
-    length_major_bouts = []
-    
-    position_seed_bouts = []
-    length_seed_bouts = []
-    
-    for i in position_bouts_merged:
-        bout_duration = i[1] - i[0]
-        
-        if bout_duration >= kwargs["minimal_bout_length"]:
-            if kwargs["peri_event"]["graph_distance_pre"] <= i[0] <= kwargs["video_end"]-kwargs["peri_event"]["graph_distance_post"]-kwargs["photometry_data"]["time_lost"]:
-                position_major_bouts.append((i[0], i[1]))
-                length_major_bouts.append(bout_duration)
-            else:
-                position_seed_bouts.append((i[0], i[1]))
-                length_seed_bouts.append(bout_duration)
-        elif bout_duration < kwargs["minimal_bout_length"]:
-            position_seed_bouts.append((i[0], i[1]))
-            length_seed_bouts.append(bout_duration)
+    event_starts = position_bouts[:, 0]
+    event_ends = position_bouts[:, 1]
+
+    up_times = event_ends - event_starts  # FIXME: Extract + depends on start low or high
+
+    short_bouts_idx = np.where(up_times < min_bout_length)[0]  # FIXME: use function
+    short_bout_ranges = np.column_stack((event_ends[short_bouts_idx],
+                                         event_starts[short_bouts_idx]))
+    short_bout_durations = short_bout_ranges[:, 1] - short_bout_ranges[:, 0]
+
+    long_bouts_idx = np.where(up_times >= min_bout_length)[0]
+    long_bout_ranges = np.column_stack((event_ends[long_bouts_idx],
+                                        event_starts[long_bouts_idx]))
+    long_bout_durations = long_bout_ranges[:, 1] - long_bout_ranges[:, 0]  # FIXME: start high ?
             
-    return position_major_bouts, length_major_bouts, position_seed_bouts, length_seed_bouts
+    return long_bout_ranges, long_bout_durations, short_bout_ranges, short_bout_durations
 
 
-def extract_peri_event_photmetry_data(position_bouts, **kwargs):
-    """Algorithm that extracts the photometry data at the moment when the animal behaves.
-    
-    Args :  position_bouts (arr) = list of start and end of each major behavioral bout
-            kwargs (dict) = dictionnary with additional parameters
-
-    Returns : df_around_peaks (list) = list of photometry data at the moment when the animal behaves
+def extract_peri_event_photometry_data(position_bouts, **params):
     """
+    Algorithm that extracts the photometry data at the moment when the animal behaves.
     
+    :param np.array position_bouts:  list of start and end of each major behavioral bout
+    :param dict params: A dictionary of parameters
+    :return: df_around_peaks (list) = list of photometry data at the moment when the animal behaves
+    """
     df_around_peaks = []
-    
+    sample_rate = params["recording_sampling_rate"]
+    n_pnts_pre = params["peri_event"]["graph_distance_pre"] * sample_rate
+    n_pnts_post = (params["peri_event"]["graph_distance_post"] * sample_rate) + 1  # Add 1 pnt
+    delta_f = params["photometry_data"]["dFF"]["dFF"]
     for bout in position_bouts:
-        segment = kwargs["photometry_data"]["dFF"]["dFF"][int((bout[0]*kwargs["recording_sampling_rate"]) -
-                                                              (kwargs["peri_event"]["graph_distance_pre"] * kwargs["recording_sampling_rate"])):
-                                                          int((bout[0]*kwargs["recording_sampling_rate"]) + ((kwargs["peri_event"]["graph_distance_post"]+1) * kwargs["recording_sampling_rate"]))]
-        
-        df_around_peaks.append(segment)
-        
+        event_start = bout[0] * sample_rate
+        start_idx = int(event_start - n_pnts_pre)
+        end_idx = int(event_start + n_pnts_post)
+        df_around_peaks.append(delta_f[start_idx:end_idx])
+
     return df_around_peaks
 
 
-def reorder_by_bout_size(dF_around_peaks, length_bouts):
-    """Simple algorithm that re-orders the peri-event photometry data based on the size of the behavioral event.
-    
-    Args :  dF_around_peaks (arr) = list of photometry data at the moment when the animal behaves
-            length_bouts (list) = list of the length of each behavioral bout
-
-    Returns : dd_around_peaks_ordered (list) = list of ordered photometry data at the moment when the animal behaves
-              length_bouts_ordered (list) = list of the length of each behavioral bout
+def reorder_by_bout_size(delta_f_around_peaks, length_bouts):
     """
-    order = np.argsort(-np.array(length_bouts))
+    Simple algorithm that re-orders the peri-event photometry data based on the size of the behavioral event.
+
+    :param np.array delta_f_around_peaks:  photometry data at the moment when the animal behaves
+    :param np.array length_bouts: list of the length of each behavioral bout
+    :return: dd_around_peaks_ordered (list) = list of ordered photometry data at the moment when the animal behaves
+             length_bouts_ordered (list) = list of the length of each behavioral bout
+    """
+    order = np.argsort( -np.array(length_bouts))
     
-    dd_around_peaks_ordered = np.array(dF_around_peaks)[order]
+    dd_around_peaks_ordered = np.array(delta_f_around_peaks)[order]
     length_bouts_ordered = np.array(length_bouts)[order]
     
     return dd_around_peaks_ordered, length_bouts_ordered
-
-
-
-
-
-
-

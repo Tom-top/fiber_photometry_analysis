@@ -12,6 +12,7 @@ import sys
 
 from fiber_photometry_analysis.utilities import set_file_paths
 
+
 def main(working_directory):
     # FIXME: use set_file_paths
     video_file_path = os.path.join(working_directory, "video.ext")
@@ -19,10 +20,7 @@ def main(working_directory):
     segmentation_file_path = os.path.join(working_directory, "segmentation.ext")
     photometry_file_path = os.path.join(working_directory, "photometry.ext")
 
-    if os.path.exists(video_file_path):
-        video=True
-    else:
-        video=False
+    video = os.path.exists(video_file_path)
 
     if os.path.exists(video_metadata_file_path):
         video_duration = load_video_metadata(video_metadata_file_path)

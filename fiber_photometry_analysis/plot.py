@@ -319,7 +319,7 @@ def add_line_at_zero(ax, x, line_width):
 
 
 def plot_data_pair(calcium_data, isosbestic_data, title, kwargs, x, add_zero_line=False, units='', to_kilo=False):
-    x_max = x[-1]
+    x_max = x.iloc[-1]
     multiplication_factor = 1000 if to_kilo else 1
     xticks, xticklabels, unit = utils.generate_xticks_and_labels(x_max)
 
@@ -338,6 +338,7 @@ def plot_data_pair(calcium_data, isosbestic_data, title, kwargs, x, add_zero_lin
     ax1.set_xlabel("Time ({0})".format(unit), fontsize=kwargs["fsl"])
 
     plt.tight_layout()
+    plt.show()
 
     if kwargs["photometry_pp"]["multicursor"]:
         multi = MultiCursor(fig.canvas, [ax0, ax1], color='r', lw=1, vertOn=[ax0, ax1])  # FIXME: unused
@@ -347,7 +348,7 @@ def plot_data_pair(calcium_data, isosbestic_data, title, kwargs, x, add_zero_lin
 
 # FIXME: simplify signature
 def sub_plot(data, x, xticks, xticklabels, ax, laser, label, kwargs, add_zero_line, units, multiplication_factor, baseline=None):
-    x_max = x[-1]
+    x_max = x.iloc[-1]
     # TODO: check if compute xticks locally
     line_width = kwargs['lw']
     font_size = kwargs["fsl"]
@@ -377,7 +378,7 @@ def sub_plot(data, x, xticks, xticklabels, ax, laser, label, kwargs, add_zero_li
 
 
 def plot_cropped_data(calcium, calcium_fc, isosbestic, isosbestic_fc, kwargs, x):
-    x_max = x[-1]
+    x_max = x.iloc[-1]
     xticks, xticklabels, unit = utils.generate_xticks_and_labels(x_max)
 
     fig = plt.figure(figsize=(10, 5), dpi=200.)
@@ -395,6 +396,7 @@ def plot_cropped_data(calcium, calcium_fc, isosbestic, isosbestic_fc, kwargs, x)
     ax1.set_xlabel("Time ({0})".format(unit), fontsize=kwargs["fsl"])
 
     plt.tight_layout()
+    plt.show()
 
     if kwargs["photometry_pp"]["multicursor"]:
         multi = MultiCursor(fig.canvas, [ax0, ax1], color='r', lw=1, vertOn=[ax0, ax1])  # FIXME: unused

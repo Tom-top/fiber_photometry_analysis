@@ -7,14 +7,14 @@ Created on Fri Oct 23 14:41:56 2020
 """
 
 from fiber_photometry_analysis import utilities as utils
-from fiber_photometry_analysis import io
+from fiber_photometry_analysis import photometry_io
 
 
 def set_parameters(files, allow_downsampling=True):
     photometry_file_csv, video_file, behavior_automatic_file, behavior_manual_file, saving_directory = files  # Assigning new variables for each file
 
-    sampling_info = io.get_recording_duration_and_sampling_rate(photometry_file_csv,
-                                                                allow_downsampling=allow_downsampling)
+    sampling_info = photometry_io.get_recording_duration_and_sampling_rate(photometry_file_csv,
+                                                                           allow_downsampling=allow_downsampling)
     recording_duration, recording_sampling_rate, downsampling_factor = sampling_info  # Get metadata from the photometry file
     
     general_args = {
@@ -33,7 +33,7 @@ def set_parameters(files, allow_downsampling=True):
     
     if video_file is not None:
         general_args["video"] = True  # Bool. True if a video is to be analyzed, otherwise False
-        video_duration, video_sampling_rate = io.get_video_duration_and_framerate(video_file)  # Get metadata from the video file
+        video_duration, video_sampling_rate = photometry_io.get_video_duration_and_framerate(video_file)  # Get metadata from the video file
         general_args["video_duration"] = video_duration  # The duration of the video (s)
         general_args["video_start"] = 0  # The start of the video (s). Change this value if you would like to skip some time at the beginning
         general_args["video_end"] = video_duration  # The end of the video (s). Change this value if you would like to skip some time at the end

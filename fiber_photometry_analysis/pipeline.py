@@ -9,14 +9,13 @@ Created on Tue Oct 20 13:35:52 2020
 import os
 from dataclasses import dataclass
 
-
 import matplotlib.pyplot as plt
 
 import moviepy.editor as mpy
 import numpy as np
 
 from fiber_photometry_analysis import utilities as utils
-from fiber_photometry_analysis import io
+from fiber_photometry_analysis import photometry_io
 from fiber_photometry_analysis import signal_preprocessing as preproc
 from fiber_photometry_analysis import behavior_preprocessing as behav_preproc
 from fiber_photometry_analysis import parameters
@@ -36,7 +35,8 @@ class Coordinates:
 # Setting the working directory and the related files
 experiment = "yymmdd"
 mouse = "test"
-analysis_folder = "/Users/tomtop/Documents/Github/Fiber_Photometry_Analysis"  # TODO: change
+base_directory = "/Users/tomtop/Documents/Github/Fiber_Photometry_Analysis"
+working_directory = os.path.join(base_directory, "{}/{}".format(experiment, mouse))
 
 files = utils.set_file_paths(working_directory, experiment, mouse)
 photometry_file_csv, video_file, behavior_automatic_file, behavior_manual_file, saving_directory = files
@@ -56,8 +56,10 @@ params["peri_event"]["graph_auc_post"] = 2
 params["video_photometry"]["resize_video"] = 1.
 params["video_photometry"]["global_acceleration"] = 20
 
-photometry_file_npy = io.convert_to_npy(photometry_file_csv, **params)
-photometry_data = preproc.load_photometry_data(photometry_file_npy, **params)  # dict of different preprocessed data
+# photometry_file_npy = io.convert_to_npy(photometry_file_csv, **params)
+photometry_data_test = photometry_io.save_dataframe_to_feather(photometry_file_csv, working_directory,
+                                                               "photometry_{}_{}".format(experiment, mouse))
+photometry_data = preproc.load_photometry_data(photometry_data_test, **params)  # dict of different preprocessed data
 # FIXME: remove from metadata
 params["photometry_data"] = photometry_data  # Adds a new parameter containing all the photometry data
 

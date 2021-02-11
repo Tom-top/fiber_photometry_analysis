@@ -26,7 +26,7 @@ plt.style.use("default")
 from fiber_photometry_analysis import utilities as utils
 
 
-def extract_raw_data(file, **kwargs):
+def extract_raw_data(file_path, **kwargs):
     """Function that extracts the raw data from the csv file and displays it
     in a plot.
 
@@ -39,16 +39,13 @@ def extract_raw_data(file, **kwargs):
     """
 
     print("\nExtracting raw data for Isosbestic and Calcium recordings !")
-    channel_isosbestic = kwargs["channel_isosbestic"]
-    channel_calcium = kwargs["channel_calcium"]
-    print("Isosbestic channel : {}, Calcium channel : {}".format(channel_isosbestic, channel_calcium))
-    photometry_data = np.load(file)  # Load the NPY file
-    x = photometry_data[0]  # time to be extracted
-    isosbestic_adjusted = photometry_data[channel_isosbestic]  # data compressed in time
-    calcium_adjusted = photometry_data[channel_calcium]  # data compressed in time
-    plot_data_pair(calcium_adjusted, isosbestic_adjusted, 'raw', kwargs, x, units='mV', to_kilo=True)
+    photometry_data = pd.read_feather(file_path)
+    x = photometry_data["Time(s)"]
+    isosbestic = photometry_data["AIn-1 - Dem (AOut-{})".format(kwargs["isosbestic_channel"])]
+    calcium = photometry_data["AIn-1 - Dem (AOut-{})".format(kwargs["calcium_channel"])]
+    plot_data_pair(calcium, isosbestic, 'raw', kwargs, x, units='mV', to_kilo=True)
 
-    return x, isosbestic_adjusted, calcium_adjusted
+    return x, isosbestic, calcium
 
 
 def adjust_signal_to_video_time(time_video, time_final, source):
@@ -134,7 +131,7 @@ def find_baseline_and_crop(x, isosbestic, calcium, **kwargs):
                     kwargs["recording_sampling_rate"],\
                     crop_start=kwargs["crop_start"],\
                     crop_end=kwargs["crop_end"])
-    x = x - x[0]
+    x = x - x.iloc[0]
     isosbestic = crop_signal(isosbestic,\
                              kwargs["recording_sampling_rate"],\
                              crop_start=kwargs["crop_start"],\

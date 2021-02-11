@@ -38,7 +38,6 @@ def extract_raw_data(file_path, **params):
             calcium_adjusted : The adjusted calcium signal (time fitted to the video)
     :rtype: (np.array, np.array, np.array)
     """
-
     print("\nExtracting raw data for Isosbestic and Calcium recordings !")
     channel_isosbestic = params["channel_isosbestic"]
     channel_calcium = params["channel_calcium"]
@@ -65,7 +64,6 @@ def adjust_signal_to_video_time(time_video, time_final, source):
     :return: The adjusted signal
     :rtype: np.array
     """
-    
     spl = interp1d(time_video, source)
     return spl(time_final)
 
@@ -80,7 +78,6 @@ def down_sample(x, isosbestic, calcium, factor):
     :param int factor: The factor of down sampling
     :return: The downsampled signal
     """
-
     delta = len(x) % factor
 
     x = x[:-delta][::factor]  # FIXME: inplace
@@ -103,7 +100,6 @@ def smooth(x, isosbestic, calcium, **kwargs):
                 calcium_smoothed : The smoothed calcium signal
     :rtype: (np.array, np.array, np.array)
     """
-    
     print("\nStarting smoothing for Isosbestic and Calcium signals !")
     
     isosbestic_smoothed = smooth_signal(isosbestic, window_len=kwargs["smoothing_window"])[:-kwargs["smoothing_window"] + 1]
@@ -130,7 +126,6 @@ def find_baseline_and_crop(x, isosbestic, calcium, **kwargs):
             calcium_fc : The baseline for the calcium signal
     :rtype: (np.array, np.array, np.array, np.array, np.array)
     """
-    
     print("\nStarting baseline computation for Isosbestic and Calcium signals !")
 
     x = crop_signal(x,
@@ -170,7 +165,6 @@ def baseline_correction(x, isosbestic, calcium, isosbestic_fc, calcium_fc, **kwa
              calcium_corrected : The baseline corrected calcium signal
     :rtype: (np.array, np.array)
     """
-    
     print("\nStarting baseline correction for Isosbestic and Calcium signals !")
     
     isosbestic_corrected = (isosbestic - isosbestic_fc) / isosbestic_fc  # baseline correction for isosbestic
@@ -195,7 +189,6 @@ def standardization(x, isosbestic, calcium, **kwargs):
              calcium_standardized : The standardized calcium signal
     :rtype: (np.array, np.array)
     """
-    
     if kwargs["photometry_pp"]["standardize"]:
         print("\nStarting standardization for Isosbestic and Calcium signals !")
     
@@ -224,8 +217,7 @@ def interchannel_regression(isosbestic, calcium, **kwargs):
     :return: isosbestic_fitted : The fitted isosbestic signal
     :rtype: np.array
     """
-
-    print("\nStarting interchannel regression and alignment for Isosbestic and Calcium signals !")
+    print("\nStarting inter-channel regression and alignment for Isosbestic and Calcium signals !")
     
     if kwargs["photometry_pp"]["regression"] == "Lasso":
         reg = Lasso(alpha=0.0001, precompute=True, max_iter=1000,
@@ -303,7 +295,6 @@ def compute_delta_f(x, isosbestic, calcium, **kwargs):
     :return: dFF : Relative changes of fluorescence over time
     :rtype: np.array
     """
-    
     print("\nStarting the computation of dF/F !")
     
     df_f = calcium - isosbestic  # computing dF/F
@@ -355,9 +346,8 @@ def load_photometry_data(photometry_data_file_path, **kwargs):
     :param dict kwargs: Dictionary with the parameters
     :return: data (dict) = A dictionary holding all the results from subsequent steps
              OR
-             dFF (arr) = Relative changes of fluorescence over time 
+             dFF (arr) = Relative changes of fluorescence over time
     """
-
     x0, isosbestic, calcium = extract_raw_data(photometry_data_file_path,
                                                **kwargs)
 
@@ -386,41 +376,19 @@ def load_photometry_data(photometry_data_file_path, **kwargs):
     
     dF = compute_delta_f(x2, isosbestic_fitted, calcium_standardized, **kwargs)
     
-    time_lost = (len(x0) - len(x2))/kwargs["recording_sampling_rate"]
-
+    sampling_rate = kwargs["recording_sampling_rate"]
+    time_lost = (len(x0) - len(x2))/sampling_rate
     raw_isosbestic_cropped, raw_calcium_cropped =\
-    [crop_signal(i, kwargs["recording_sampling_rate"], crop_start=kwargs["crop_start"], crop_end=kwargs["crop_end"])\
-    for i in [isosbestic, calcium]]
+    [crop_signal(i, sampling_rate, crop_start=kwargs["crop_start"], crop_end=kwargs["crop_end"])
+     for i in [isosbestic, calcium]]
 
-    df_isosbestic = pd.DataFrame({
+    df = pd.DataFrame({
         "time": x2,
         "raw_isosbestic_cropped": raw_isosbestic_cropped,
         "isosbestic_cropped": isosbestic_cropped,
         "isosbestic_corrected": isosbestic_corrected,
         "isosbestic_standardized": isosbestic_standardized,
-        "isosbestic_fitted": isosbestic_fitted
-    })
-
-    df_calcium = pd.DataFrame({
-        "time": x2,
-        "raw_calcium_cropped": raw_isosbestic_cropped,
-        "calcium_cropped": calcium_cropped,
-        "calcium_corrected": calcium_corrected,
-        "calcium_standardized": isosbestic_standardized,
-    })
-
-    df_deltaf = pd.DataFrame({
-        "time": x2,
-        "dF": dF,
-    })
-
-    df = pd.DataFrame({
-        "time": x2,
-        "raw_isosbestic_cropped": raw_isosbestic_cropped,
-        "isosbestic_cropped" : isosbestic_cropped,
-        "isosbestic_corrected" : isosbestic_corrected,
-        "isosbestic_standardized" : isosbestic_standardized,
-        "isosbestic_fitted" : isosbestic_fitted,
+        "isosbestic_fitted": isosbestic_fitted,
         "raw_calcium_cropped": raw_isosbestic_cropped,
         "calcium_cropped": calcium_cropped,
         "calcium_corrected": calcium_corrected,

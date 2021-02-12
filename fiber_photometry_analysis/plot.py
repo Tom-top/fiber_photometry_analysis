@@ -24,9 +24,10 @@ import seaborn as sns
 from sklearn.metrics import auc
 
 from fiber_photometry_analysis import utilities as utils
+from fiber_photometry_analysis import behavior_preprocessing as behav_preproc
 
 
-def check_delta_f_with_behavior(position_bouts, length_bouts, color=("blue"), name="dF_&_behavioral_overlay", **kwargs):
+def check_delta_f_with_behavior(bool_map, zorder=[0,1],  name="dF_&_behavioral_overlay", extra_legend_label="", **kwargs):
     """Function that plots the pre-processed photometry data and overlays the
     behavior data.
     
@@ -36,41 +37,66 @@ def check_delta_f_with_behavior(position_bouts, length_bouts, color=("blue"), na
             kwargs (dict) = dictionary with additional parameters
     """
     
-    fig = plt.figure(figsize=(10, 3), dpi=200.)  # FIXME: unused
+    plt.figure(figsize=(10, 3), dpi=200.)
     ax0 = plt.subplot(111)
-    
-    n = 0
-    handles = []
-    if len(position_bouts) == 1:
+
+    x_delta_f = kwargs["photometry_data"]["dFF"]["x"]
+    y_delta_f = kwargs["photometry_data"]["dFF"]["dFF"]
+
+    xticks, xticklabels, unit = utils.generate_xticks_and_labels(x_delta_f.iloc[-1])
+    y_min, y_max, round_factor = utils.generate_yticks(y_delta_f, 0.1)
+    colors = ["red", "orange"]
+
+    event_plot_args = {"linelengths": y_max - y_min,
+                       "lineoffsets": (y_max + y_min) / 2,
+                       "alpha": 1,
+                       }
+    handles = [None, None]
+
+    if isinstance(bool_map, list) and len(bool_map) == 2:
+        labels = [kwargs["behavior_to_segment"], "{}".format(extra_legend_label)]
+        raster_data_raw = behav_preproc.get_position_from_bool_map(bool_map[0], kwargs["resolution_data"])
+        raster_data_processed = behav_preproc.get_position_from_bool_map(bool_map[1], kwargs["resolution_data"])
+
+        b1, = ax0.eventplot(raster_data_processed,
+                            color=colors[zorder[0]],
+                            zorder=zorder[0],
+                            **event_plot_args)
+        handles[zorder[1]] = b1
+
+    elif isinstance(bool_map, np.ndarray):
         labels = [kwargs["behavior_to_segment"]]
-    else:
-        labels = [kwargs["behavior_to_segment"], "Excluded"]
-    
-    ax0.plot(kwargs["photometry_data"]["dFF"]["x"], kwargs["photometry_data"]["dFF"]["dFF"], color="green", lw=kwargs["lw"])
-    ax0.plot(0,  kwargs["video_end"]-kwargs["photometry_data"]["time_lost"], (0, 0), "--", color="blue", lw=kwargs["lw"]) #Creates a horizontal dashed line at y = 0 to signal the baseline
-    
-    xticks, xticklabels, unit = utils.generate_xticks_and_labels(kwargs["photometry_data"]["dFF"]["x"][-1])
+        raster_data_raw = behav_preproc.get_position_from_bool_map(bool_map, kwargs["resolution_data"])
+
+    b2, = ax0.eventplot(raster_data_raw,
+                        color=colors[zorder[1]],
+                        zorder=zorder[1],
+                        **event_plot_args)
+    handles[zorder[0]] = b2
+
+    ax0.plot(x_delta_f,
+             y_delta_f,
+             zorder=2,
+             color="green",
+             lw=kwargs["lw"],
+             )
+
+    ax0.plot(0,
+             kwargs["video_end"] - kwargs["photometry_data"]["time_lost"],
+             (0, 0),
+             "--",
+             color="blue",
+             lw=kwargs["lw"],
+             )
+
+    ax0.set_xlim(0, x_delta_f.iloc[-1])
     ax0.set_xticks(xticks)
     ax0.set_xticklabels(xticklabels, fontsize=kwargs["fsl"])
-    ax0.set_xlim(0, kwargs["photometry_data"]["dFF"]["x"][-1])
     ax0.set_xlabel("Time ({0})".format(unit), fontsize=kwargs["fsl"])
-    
-    y_min, y_max, round_factor = utils.generate_yticks(kwargs["photometry_data"]["dFF"]["dFF"], 0.1)
-    ax0.set_yticks(np.arange(y_min, y_max+round_factor, round_factor))
+
     ax0.set_ylim(y_min, y_max)
-    
-    if kwargs["photometry_pp"]["standardize"]:
-        ax0.set_yticklabels(["{:.0f}".format(i) for i in np.arange(y_min, y_max+round_factor, round_factor)], fontsize=kwargs["fsl"])
-    else:
-        ax0.set_yticklabels(["{:.0f}".format(i) for i in np.arange(y_min, y_max+round_factor, round_factor)*100], fontsize=kwargs["fsl"])
-        
-    for P, L in zip(position_bouts, length_bouts):
-        patch = patches.Rectangle((0, 0), 1, 1, alpha=0.3, color=color[n], lw=0, edgecolor=None)
-        handles.append(patch)
-        for p, l in zip(P, L):
-            patch = patches.Rectangle((p[0], y_min+y_min*0.1), l, (y_max+y_max*0.1)-(y_min+y_min*0.1), alpha=0.3, color=color[n], lw=0, edgecolor=None)
-            ax0.add_patch(patch)
-        n += 1
+    ax0.set_yticks(np.arange(y_min, y_max + round_factor, round_factor))
+    ax0.set_yticklabels(["{:.0f}".format(i) for i in np.arange(y_min, y_max+round_factor, round_factor)], fontsize=kwargs["fsl"])
         
     ax0.legend(handles=handles, labels=labels, loc=2, fontsize=kwargs["fsl"])
     plt.tight_layout()
@@ -315,7 +341,7 @@ def add_line_at_zero(ax, x, line_width):
     """
     Creates a horizontal dashed line at y = 0 to signal the baseline
     """
-    ax.plot((0, x[-1]), (0, 0), "--", color="black", lw=line_width)
+    ax.plot((0, x.iloc[-1]), (0, 0), "--", color="black", lw=line_width)
 
 
 def plot_data_pair(calcium_data, isosbestic_data, title, kwargs, x, add_zero_line=False, units='', to_kilo=False):
@@ -338,7 +364,6 @@ def plot_data_pair(calcium_data, isosbestic_data, title, kwargs, x, add_zero_lin
     ax1.set_xlabel("Time ({0})".format(unit), fontsize=kwargs["fsl"])
 
     plt.tight_layout()
-    plt.show()
 
     if kwargs["photometry_pp"]["multicursor"]:
         multi = MultiCursor(fig.canvas, [ax0, ax1], color='r', lw=1, vertOn=[ax0, ax1])  # FIXME: unused
@@ -396,7 +421,6 @@ def plot_cropped_data(calcium, calcium_fc, isosbestic, isosbestic_fc, kwargs, x)
     ax1.set_xlabel("Time ({0})".format(unit), fontsize=kwargs["fsl"])
 
     plt.tight_layout()
-    plt.show()
 
     if kwargs["photometry_pp"]["multicursor"]:
         multi = MultiCursor(fig.canvas, [ax0, ax1], color='r', lw=1, vertOn=[ax0, ax1])  # FIXME: unused

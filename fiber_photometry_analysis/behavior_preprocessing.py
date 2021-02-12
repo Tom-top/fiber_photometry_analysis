@@ -6,11 +6,15 @@ Created on Fri Oct 23 16:16:29 2020
 @author: thomas.topilko
 """
 
+from decimal import Decimal
+
 import numpy as np
 import pandas as pd
 
 from fiber_photometry_analysis import utilities as utils
+from fiber_photometry_analysis import photometry_io as io
 from fiber_photometry_analysis.exceptions import FiberPhotometryDimensionError
+
 
 def extract_row(data_frame, row_name):
     """
@@ -20,13 +24,18 @@ def extract_row(data_frame, row_name):
     :param str row_name:
     :return:
     """
+
     row = data_frame[data_frame[0] == row_name].values
     row_values = row[0][1:].astype(np.float64)
     row_values = row_values[row_values > 0]
     return row_values
 
+def extract_column(data_frame, column_name):
+    column_values = data_frame[column_name]
+    return column_values[column_values > 0]
 
-def extract_behavior_data(file_path, behaviour_name):
+
+def extract_behavior_data(file_path, behaviour_name, transpose=True):
     """Extracts the raw behavior data from an excel file and cleans it.
 
     :param str file_path:  the path to the excel file
@@ -36,13 +45,22 @@ def extract_behavior_data(file_path, behaviour_name):
     """
     
     # df = pd.read_excel(file_path, header=None)  # FIXME: replace with rewrite binary dataframe
-    df = pd.read_csv(file_path, sep='\t', header=None)
-    starts = extract_row(df, "tStart{0}".format(behaviour_name))
-    ends = extract_row(df, "tEnd{0}".format(behaviour_name))
+    df = pd.read_excel(file_path, header=None)
+    if transpose:
+        df = df.T
+        column_names = df.iloc[0].to_list()
+        df.columns = column_names
+        df = df.drop(0)
+        df = io.reset_dataframe_index(df)
+        starts = extract_column(df, "tStart{0}".format(behaviour_name))
+        ends = extract_column(df, "tEnd{0}".format(behaviour_name))
+    else:
+        starts = extract_row(df, "tStart{0}".format(behaviour_name))
+        ends = extract_row(df, "tEnd{0}".format(behaviour_name))
     return starts, ends
 
 
-def estimate_minimal_resolution(starts, ends):
+def estimate_behavior_time_resolution(starts, ends):
     """Estimates the minimal time increment needed to fully capture the data.
 
     :param np.array starts: the starting timepoints for the behavioral bouts
@@ -50,12 +68,32 @@ def estimate_minimal_resolution(starts, ends):
     :return:  minimal_resolution: the starting timepoints for the behavioral bouts
     :rtype: float
     """
+
+    diff = ends - starts
+    min_step = max(diff % 1)
+    if min_step == 0:
+        res = 1
+    else:
+        remaining = float(Decimal(str(min_step)) % Decimal("0.1"))
+        if min_step - remaining == 0:
+            res = 0.1
+        else:
+            res = min_step - remaining
+
+    utils.print_in_color("The resolution for the behavioral is {}s".format(res), "GREEN")
     
-    minimal_resolution = 1 / min(ends - starts)  # FIXME: depends on start high start low. use durations function instead
-    
-    utils.print_in_color("The smallest behavioral bout is {}s long".format(1 / minimal_resolution), "GREEN")
-    
-    return minimal_resolution
+    return 1/res
+
+
+def estimate_length_bool_map(recording_duration, res):
+    return int(recording_duration*res)
+
+
+def match_time_behavior_to_photometry(starts, ends, recording_duration, video_duration, res):
+    ratio = recording_duration / video_duration
+    starts = np.round((starts*ratio).to_numpy().astype(float), 1) * res
+    ends = np.round((ends*ratio).to_numpy().astype(float), 1) * res
+    return starts, ends
 
 
 def create_bool_map(bouts_positions, total_duration, sample_interval):
@@ -96,7 +134,7 @@ def combine_ethograms(ethogerams):
     return out
 
 
-def trim_behavioral_data(mask, **params):
+def trim_behavioral_data(bool_map, crop_start, crop_end, res):
     """Trims the behavioral data to fit the pre-processed photometry data.
     It will remove the parts at the beginning and the end that correspond to the fluorescence
     settling time
@@ -106,11 +144,9 @@ def trim_behavioral_data(mask, **params):
     :return: a trimmed mask
     """
 
-    sampling = 1 / params["recording_sampling_rate"]
-    # The duration that is cropped from the photometry data because of initial fluorescence drop
-    time_lost_start_in_points = int(params["photometry_data"]["start_time_lost"] * sampling)
-    time_lost_end_in_points = int(params["photometry_data"]["start_time_lost"] * sampling)  # TODO: make separate variable
-    return mask[time_lost_start_in_points: - time_lost_end_in_points]
+    start = crop_start * res
+    end = crop_end * res
+    return bool_map[int(start) : -int(end)]
 
 
 def extract_manual_bouts(starts, ends):  # FIXME: rename
@@ -210,27 +246,6 @@ def extract_short_down_time_ranges(event_starts, event_ends, down_times, total_l
     return short_down_time_ranges
 
 
-def merge_neighboring_bouts(position_bouts, max_bout_gap, total_length):
-    """
-    Algorithm that merges behavioral bouts that are close together.
-
-    :param np.array position_bouts: list of start and end of each behavioral bout
-    :param int max_bout_gap: Maximum number of points between 2 bouts unless they get fused
-    :param int total_length: The size of the source array
-    :return: position_bouts_merged (list) = list of merged start and end of each behavioral bout
-             length_bouts_merged (list) = list of the length of each merged behavioral bout
-    """
-    event_starts = position_bouts[:, 0]
-    event_ends = position_bouts[:, 1]
-
-    down_times = get_down_durations(event_starts, event_ends, total_length)
-    short_down_time_ranges = extract_short_down_time_ranges(event_starts, event_ends,
-                                                            down_times, total_length, max_bout_gap)
-    # new_ranges =  # FIXME:
-    # bouts_length = new_ranges[:, 1] - new_ranges[:, 0]
-    # return new_ranges, bouts_length
-
-
 def set_ranges_high(src_arr, ranges):
     """
     Set the ranges specified by ranges (pairs of start, end) to 1 in src_arr (does a copy)
@@ -241,7 +256,7 @@ def set_ranges_high(src_arr, ranges):
     """
     out_arr = src_arr.copy()
     for s, e in ranges:
-        out_arr[s:e] = 1
+        out_arr[int(s):int(e)] = 1
     return out_arr
 
 
@@ -312,3 +327,6 @@ def reorder_by_bout_size(delta_f_around_peaks, length_bouts):
     length_bouts_ordered = np.array(length_bouts)[order]
     
     return dd_around_peaks_ordered, length_bouts_ordered
+
+def get_position_from_bool_map(bool_map, res):
+    return np.where(bool_map)[0]/res

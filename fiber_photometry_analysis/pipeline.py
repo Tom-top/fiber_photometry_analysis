@@ -14,10 +14,13 @@ import matplotlib.pyplot as plt
 import moviepy.editor as mpy
 import numpy as np
 
+import fiber_photometry_analysis.mask_operations
 from fiber_photometry_analysis import utilities as utils
 from fiber_photometry_analysis import photometry_io
 from fiber_photometry_analysis import signal_preprocessing as preproc
+from fiber_photometry_analysis import generic_signal_preprocessing as gen_preproc
 from fiber_photometry_analysis import behavior_preprocessing as behav_preproc
+from fiber_photometry_analysis import mask_operations as mask_op
 from fiber_photometry_analysis import parameters
 from fiber_photometry_analysis import plot
 from fiber_photometry_analysis import video_plot as v_plot
@@ -43,10 +46,11 @@ photometry_file_csv, video_file, behavior_automatic_file, behavior_manual_file, 
 
 params = parameters.set_parameters(files, allow_downsampling=True)
 cage_coordinates = Coordinates(x1=80, y1=62, x2=844, y2=402)
-params["behavior_to_segment"] = "Nesting"
-max_bout_gap = 2  # TODO: inline
+params["behavior_to_segment"] = "Behavior1"
+max_bout_gap = 4  # TODO: inline
+minimal_bout_length = 2  # TODO: inline
 params["peak_merging_distance"] = max_bout_gap  # TODO remove
-params["minimal_bout_length"] = 1
+params["minimal_bout_length"] = minimal_bout_length
 params["peri_event"]["graph_distance_pre"] = 10
 params["peri_event"]["graph_distance_post"] = 10
 params["peri_event"]["style"] = "average"
@@ -65,25 +69,42 @@ params["photometry_data"] = photometry_data  # Adds a new parameter containing a
 
 
 starts, ends = behav_preproc.extract_behavior_data(behavior_manual_file, params["behavior_to_segment"])  # REFACTOR: replace by ranges
-params["resolution_data"] = behav_preproc.estimate_minimal_resolution(starts, ends)
-bool_map = set_ranges_high(np.zeros(n_points), np.column_stack((starts, ends)))  # FIXME: needs starts, ends in p not t
-trimmed_bool_map = behav_preproc.trim_behavioral_data(bool_map, **params)
-position_bouts, length_bouts = behav_preproc.extract_manual_bouts(starts_trimmed, ends_trimmed)
-utils.print_in_color("\nBehavioral data extracted. Behavior = {0}".format(params["behavior_to_segment"]), "GREEN")
+params["resolution_data"] = behav_preproc.estimate_behavior_time_resolution(starts, ends)
+n_points = behav_preproc.estimate_length_bool_map(params["recording_duration"], params["resolution_data"])
+starts_matched, ends_matched = behav_preproc.match_time_behavior_to_photometry(starts, ends,
+                                                                               params["recording_duration"],
+                                                                               params["video_duration"],
+                                                                               params["resolution_data"])
+bool_map = set_ranges_high(np.zeros(n_points), np.column_stack((starts_matched, ends_matched)))
+trimmed_bool_map = behav_preproc.trim_behavioral_data(bool_map,
+                                                      params["crop_start"],
+                                                      params["crop_end"],
+                                                      params["resolution_data"])
 
-plot.check_delta_f_with_behavior([position_bouts], [length_bouts], color="blue", name="dF_&_raw_behavior", **params)  # FIXME: could use boolean map FIXME: remove ampersand
+plot.check_delta_f_with_behavior(trimmed_bool_map, name="dF_&_behavioral_overlay",
+                                 extra_legend_label="Merged", **params)
 
+merged_bool_map = mask_op.merge_neighboring_events(trimmed_bool_map, max_bout_gap)
 
-position_bouts_merged, length_bouts_merged = behav_preproc.merge_neighboring_bouts(position_bouts,
-                                                                                   max_bout_gap, trimmed_bool_map.size)
-plot.check_delta_f_with_behavior([position_bouts_merged], [length_bouts_merged],  # FIXME: could use boolean map
-                                 color="blue", name="dF_&_merged_behavior", **params)  # FIXME: remove ampersand
+plot.check_delta_f_with_behavior([trimmed_bool_map, merged_bool_map], zorder=[0,1], name="dF_&_behavioral_overlay",
+                                 extra_legend_label="Merged", **params)
 
-major_bouts_info = behav_preproc.detect_major_bouts(position_bouts_merged, params['minimal_bout_length'])
-position_major_bouts, length_major_bouts, position_seed_bouts, length_seed_bouts = major_bouts_info
-plot.check_delta_f_with_behavior([position_major_bouts, position_seed_bouts], [length_major_bouts, length_seed_bouts],
-                                 color=["blue", "red"], name="dF_&_filtered_behavior", **params)  # FIXME: remove ampersand
+filtered_bool_map = mask_op.filter_small_events(merged_bool_map, minimal_bout_length)
 
+plot.check_delta_f_with_behavior([merged_bool_map, filtered_bool_map], zorder=[1,0], name="dF_&_behavioral_overlay",
+                                 extra_legend_label="Filtered out", **params)
+
+interpolated_x, interpolated_delta_f = gen_preproc.interpolate_signal(params["photometry_data"]["dFF"]["x"],
+                                                                      params["photometry_data"]["dFF"]["dFF"],
+                                                                      )
+
+start_points_bouts = mask_op.find_start_points_events(filtered_bool_map)
+
+x = params["photometry_data"]["dFF"]["x"]
+y = params["photometry_data"]["dFF"]["dFF"]
+from scipy.interpolate import interp1d
+spl = interp1d(x, y)
+sink = spl(np.arange(0, ))
 
 # Extract photometry data around major bouts of behavior
 delta_f_around_bouts = behav_preproc.extract_peri_event_photometry_data(position_major_bouts, **params)
@@ -91,6 +112,12 @@ delta_f_around_bouts_ordered, length_bouts_ordered = behav_preproc.reorder_by_bo
                                                                                         length_major_bouts)
 plot.peri_event_plot(delta_f_around_bouts_ordered, length_bouts_ordered, cmap="inferno", **params)  # cividis, viridis
 plot.peri_event_bar_plot(delta_f_around_bouts_ordered, **params)
+
+
+
+
+
+
 
 # Creates a video with aligned photometry and behavior
 behavior_data_x = behav_preproc.create_bool_map(position_major_bouts,

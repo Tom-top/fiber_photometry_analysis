@@ -165,3 +165,9 @@ def get_video_duration_and_framerate(file_path):
     fps = video_clip.fps
     
     return duration, fps
+
+def reset_dataframe_index(df):
+    length = len(df)
+    idx = pd.Index(np.arange(0, length, 1))
+    df = df.set_index(idx)
+    return df

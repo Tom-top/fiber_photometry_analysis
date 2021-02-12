@@ -24,6 +24,7 @@ from fiber_photometry_analysis.plot import plot_data_pair, plot_cropped_data, pl
 plt.style.use("default")
 
 from fiber_photometry_analysis import utilities as utils
+from fiber_photometry_analysis import photometry_io as io
 
 
 def extract_raw_data(file_path, **kwargs):
@@ -127,18 +128,18 @@ def find_baseline_and_crop(x, isosbestic, calcium, **kwargs):
     
     print("\nStarting baseline computation for Isosbestic and Calcium signals !")
 
-    x = crop_signal(x,\
-                    kwargs["recording_sampling_rate"],\
-                    crop_start=kwargs["crop_start"],\
+    x = crop_signal(x,
+                    kwargs["recording_sampling_rate"],
+                    crop_start=kwargs["crop_start"],
                     crop_end=kwargs["crop_end"])
     x = x - x.iloc[0]
-    isosbestic = crop_signal(isosbestic,\
-                             kwargs["recording_sampling_rate"],\
-                             crop_start=kwargs["crop_start"],\
+    isosbestic = crop_signal(isosbestic,
+                             kwargs["recording_sampling_rate"],
+                             crop_start=kwargs["crop_start"],
                              crop_end=kwargs["crop_end"])
-    calcium = crop_signal(calcium, \
-                          kwargs["recording_sampling_rate"], \
-                          crop_start=kwargs["crop_start"],\
+    calcium = crop_signal(calcium,
+                          kwargs["recording_sampling_rate"],
+                          crop_start=kwargs["crop_start"],
                           crop_end=kwargs["crop_end"])
 
     isosbestic_fc = baseline_asymmetric_least_squares_smoothing(isosbestic, kwargs["lambda"], kwargs["p"])
@@ -244,7 +245,7 @@ def align_channels(x, isosbestic, calcium, **kwargs):  # FIXME: plot only. Renam
                 kwargs (dict) = Dictionary with the parameters
     """
     if kwargs["photometry_pp"]["plots_to_display"]["channel_alignement"]:
-        max_x = x[-1]
+        max_x = x.iloc[-1]
 
         plt.figure(figsize=(10, 3), dpi=200.)
         ax0 = plt.subplot(111)
@@ -297,7 +298,7 @@ def dFF(x, isosbestic, calcium, **kwargs):  # FIXME: rename
     df_f = calcium - isosbestic  # computing dF/F
     
     if kwargs["photometry_pp"]["plots_to_display"]["dFF"]:
-        max_x = x[-1]
+        max_x = x.iloc[-1]
 
         plt.figure(figsize=(10, 3), dpi=200.)
         ax0 = plt.subplot(111)
@@ -380,25 +381,6 @@ def load_photometry_data(file, **kwargs):
     [crop_signal(i, kwargs["recording_sampling_rate"], crop_start=kwargs["crop_start"], crop_end=kwargs["crop_end"])\
     for i in [isosbestic, calcium]]
 
-    df_isosbestic = pd.DataFrame({"time": x2,
-                                "raw_isosbestic_cropped": raw_isosbestic_cropped,
-                                "isosbestic_cropped" : isosbestic_cropped,
-                                "isosbestic_corrected" : isosbestic_corrected,
-                                "isosbestic_standardized" : isosbestic_standardized,
-                                "isosbestic_fitted" : isosbestic_fitted,
-                                })
-
-    df_calcium = pd.DataFrame({"time": x2,
-                              "raw_calcium_cropped": raw_isosbestic_cropped,
-                              "calcium_cropped": isosbestic_cropped,
-                              "calcium_cropped": isosbestic_corrected,
-                              "calcium_standardized": isosbestic_standardized,
-                              })
-
-    df_deltaf = pd.DataFrame({"time": x2,
-                               "dF": dF,
-                               })
-
     df = pd.DataFrame({"time": x2,
                     "raw_isosbestic_cropped": raw_isosbestic_cropped,
                     "isosbestic_cropped" : isosbestic_cropped,
@@ -411,8 +393,9 @@ def load_photometry_data(file, **kwargs):
                     "calcium_standardized": isosbestic_standardized,
                     "dF": dF,
                     })
-    #df = pd.DataFrame({'idx': [1, 2, 3], 'dfs': [df_isosbestic, df_calcium, df_deltaf]})
-    df.to_feather(os.path.join(kwargs["save_dir"], "photometry_data.ftr"))
+
+    df = io.reset_dataframe_index(df)
+    df.to_feather(os.path.join(kwargs["save_dir"], "photometry_data.feather"))
         
     data = {
         "raw": {"x": x0,

@@ -69,18 +69,18 @@ trimmed_bool_map = behav_preproc.trim_behavioral_data(bool_map, **params)
 position_bouts, length_bouts = behav_preproc.extract_manual_bouts(starts_trimmed, ends_trimmed)
 utils.print_in_color("\nBehavioral data extracted. Behavior = {0}".format(params["behavior_to_segment"]), "GREEN")
 
-plot.check_delta_f_with_behavior([position_bouts], [length_bouts], color="blue", name="dF_&_raw_behavior", **params)  # FIXME: could use boolean map FIXME: remove ampersand
+plot.check_delta_f_with_behavior([position_bouts], [length_bouts], colors="blue", fig_name="dF_&_raw_behavior", **params)  # FIXME: could use boolean map FIXME: remove ampersand
 
 
 position_bouts_merged, length_bouts_merged = behav_preproc.merge_neighboring_bouts(position_bouts,
                                                                                    max_bout_gap, trimmed_bool_map.size)
 plot.check_delta_f_with_behavior([position_bouts_merged], [length_bouts_merged],  # FIXME: could use boolean map
-                                 color="blue", name="dF_&_merged_behavior", **params)  # FIXME: remove ampersand
+                                 colors="blue", fig_name="dF_&_merged_behavior", **params)  # FIXME: remove ampersand
 
 major_bouts_info = behav_preproc.detect_major_bouts(position_bouts_merged, params['minimal_bout_length'])
 position_major_bouts, length_major_bouts, position_seed_bouts, length_seed_bouts = major_bouts_info
 plot.check_delta_f_with_behavior([position_major_bouts, position_seed_bouts], [length_major_bouts, length_seed_bouts],
-                                 color=["blue", "red"], name="dF_&_filtered_behavior", **params)  # FIXME: remove ampersand
+                                 colors=["blue", "red"], fig_name="dF_&_filtered_behavior", **params)  # FIXME: remove ampersand
 
 
 # Extract photometry data around major bouts of behavior

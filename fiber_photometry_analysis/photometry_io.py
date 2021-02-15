@@ -5,7 +5,7 @@ Created on Mon Oct 19 13:15:03 2020
 
 @author: thomas.topilko
 """
-
+import logging
 import os
 
 import pandas as pd
@@ -57,7 +57,7 @@ def deprecated_convert_to_npy(file_path, **kwargs):  # FIXME: replace by save to
     if os.path.exists(npy_file_path):
         os.remove(npy_file_path)
         
-    print("Converting CSV photometry data into NPY")
+    logging.info("Converting CSV photometry data into NPY")
 
     photometry_sheet = pd.read_csv(file_path, header=1, usecols=np.arange(0, 3))  # Load the data
     
@@ -95,7 +95,7 @@ def deprecated_convert_to_npy(file_path, **kwargs):  # FIXME: replace by save to
     
     np.save(npy_file_path, sink)  # Save the data as numpy file
     
-    print("Filetered : {0} points".format(len(photometry_sheet) - len(filtered_photometry_sheet)))
+    logging.info("Filetered : {0} points".format(len(photometry_sheet) - len(filtered_photometry_sheet)))
 
     return npy_file_path
 
@@ -147,8 +147,7 @@ def get_recording_duration_and_sampling_rate(file_path, allow_downsampling=True)
 
     factor = None
     if sr >= 250:
-        print("\n")
-        utils.print_in_color("The sampling rate of the recording is pretty high : {0}. "
+        utils.print_in_color("\nThe sampling rate of the recording is pretty high : {0}. "
                              "We suggest to downsample the data using the pp.down_sample_signal function (250Hz)"
                              .format(sr), "RED")
 

@@ -5,7 +5,7 @@ Created on Mon Oct 19 10:08:31 2020
 
 @author: thomas.topilko
 """
-
+import logging
 import os
 
 import numpy as np
@@ -40,7 +40,7 @@ def extract_raw_data(file_path, params):
             calcium_adjusted : The adjusted calcium signal (time fitted to the video)
     :rtype: (np.array, np.array, np.array)
     """
-    print("\nExtracting raw data for Isosbestic and Calcium recordings !")
+    logging.info("\nExtracting raw data for Isosbestic and Calcium recordings !")
     photometry_data = pd.read_feather(file_path)
     x = photometry_data["Time(s)"]
     isosbestic = photometry_data["AIn-1 - Dem (AOut-{})".format(params["isosbestic_channel"])]
@@ -99,7 +99,7 @@ def smooth(x, isosbestic, calcium, win_len=1):
                 calcium_smoothed : The smoothed calcium signal
     :rtype: (np.array, np.array, np.array)
     """
-    print("\nStarting smoothing for Isosbestic and Calcium signals !")
+    logging.info("\nStarting smoothing for Isosbestic and Calcium signals !")
     isosbestic_smoothed = smooth_signal(isosbestic, window_len=win_len)[: - win_len + 1]
     calcium_smoothed = smooth_signal(calcium, window_len=win_len)[: - win_len + 1]
         
@@ -121,7 +121,7 @@ def find_baseline_and_crop(x, isosbestic, calcium, params):  # WARNING: does 2 t
             calcium_fc : The baseline for the calcium signal
     :rtype: (np.array, np.array, np.array, np.array, np.array)
     """
-    print("\nStarting baseline computation for Isosbestic and Calcium signals !")
+    logging.info("\nStarting baseline computation for Isosbestic and Calcium signals !")
 
     x = crop_signal(x,
                     params["recording_sampling_rate"],
@@ -156,7 +156,7 @@ d isosbestic signal
              calcium_corrected : The baseline corrected calcium signal
     :rtype: (np.array, np.array)
     """
-    print("\nStarting baseline correction for Isosbestic and Calcium signals !")
+    logging.info("\nStarting baseline correction for Isosbestic and Calcium signals !")
     isosbestic_corrected = (isosbestic - isosbestic_fc) / isosbestic_fc  # baseline correction for isosbestic
     calcium_corrected = (calcium - calcium_fc) / calcium_fc  # baseline correction for calcium
     return isosbestic_corrected, calcium_corrected
@@ -175,7 +175,7 @@ def standardization(isosbestic, calcium, standardise):
     :rtype: (np.array, np.array)
     """
     if standardise:
-        print("\nStarting standardization for Isosbestic and Calcium signals !")
+        logging.info("\nStarting standardization for Isosbestic and Calcium signals !")
     
         isosbestic_standardized = (isosbestic - np.median(isosbestic)) / np.std(isosbestic)  # standardization correction for isosbestic
         calcium_standardized = (calcium - np.median(calcium)) / np.std(calcium)  # standardization for calcium
@@ -199,7 +199,7 @@ def interchannel_regression(isosbestic, calcium, regression_type):
     :return: isosbestic_fitted : The fitted isosbestic signal
     :rtype: np.array
     """
-    print("\nStarting inter-channel regression and alignment for Isosbestic and Calcium signals !")
+    logging.info("\nStarting inter-channel regression and alignment for Isosbestic and Calcium signals !")
     
     if regression_type.lower() == "lasso":
         reg = Lasso(alpha=0.0001, precompute=True, max_iter=1000,
@@ -225,7 +225,7 @@ def compute_delta_f(isosbestic, calcium):
     :param np.array calcium: The standardized (or not) calcium signal
     :rtype: np.array
     """
-    print("\nStarting the computation of dF/F !")
+    logging.info("\nStarting the computation of dF/F !")
     delta_f = calcium - isosbestic
     return delta_f
 

@@ -23,7 +23,7 @@ colors = {
 }
 
 
-def print_in_color(message, color):
+def print_in_color(message, color):  # TODO: call when logging.note and red when error...
     """Function that receives a string as an argument
     and prints the message in color
     

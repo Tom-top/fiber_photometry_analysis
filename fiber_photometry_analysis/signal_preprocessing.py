@@ -19,7 +19,8 @@ import matplotlib.pyplot as plt
 
 from fiber_photometry_analysis.generic_signal_processing import down_sample_signal, smooth_signal, crop_signal
 from fiber_photometry_analysis.generic_signal_processing import baseline_asymmetric_least_squares_smoothing
-from fiber_photometry_analysis.plot import plot_data_pair, plot_cropped_data, plot_ca_iso_regression, add_line_at_zero
+from fiber_photometry_analysis.plot import plot_data_pair, plot_cropped_data, plot_ca_iso_regression, \
+    plot_delta_f, plot_aligned_channels
 
 plt.style.use("default")
 
@@ -215,110 +216,19 @@ def interchannel_regression(isosbestic, calcium, regression_type):
     return isosbestic_fitted
 
 
-def align_channels(x, isosbestic, calcium, params):  # FIXME: plot only. Rename
-    """
-    Function that performs the alignment of the fitted isosbestic and standardized (or not) calcium
-    signals and displays it in a plot.
-
-    :param np.array x: The time data in X
-    :param np.array isosbestic: The fitted isosbestic signal
-    :param np.array calcium: The standardized (or not) calcium signal
-    :param dict params: Dictionary with the parameters
-    """
-    font_size = params['fsl']
-    line_width = params['lw']
-    fig_name = 'Alignement'
-    data = np.concatenate((isosbestic, calcium))
-    standardize = params["photometry_pp"]["standardize"]
-    multiplication_factor = 1 if standardize else 100
-    title = "z-score" if standardize else "Change in signal (%)"
-
-    if params["photometry_pp"]["plots_to_display"]["channel_alignement"]:
-        plt.figure(figsize=(10, 3), dpi=200.)
-        ax = plt.subplot(111)
-        b, = ax.plot(x, calcium, alpha=0.8, c=params["photometry_pp"]["blue_laser"], lw=line_width, zorder=0)
-        p, = ax.plot(x, isosbestic, alpha=0.8, c=params["photometry_pp"]["purple_laser"], lw=line_width, zorder=1)
-        add_line_at_zero(ax, x, line_width)
-
-        x_max = x[-1]
-        xticks, xticklabels, unit = utils.generate_xticks_and_labels(x_max)
-        ax.set_xticks(xticks)
-        ax.set_xticklabels(xticklabels, fontsize=font_size)
-        ax.set_xlim(0, x_max)
-        ax.set_xlabel("Time ({0})".format(unit), fontsize=font_size)
-
-        y_min, y_max, round_factor = utils.generate_yticks(data, 0.1)
-        int_ticks = np.arange(y_min, y_max + round_factor, round_factor)
-        ax.set_yticks(int_ticks)
-        int_ticks *= multiplication_factor
-        ticks = ["{:.0f}".format(i) for i in int_ticks]
-        ax.set_yticklabels(ticks, fontsize=font_size)
-        ax.set_ylim(y_min, y_max)
-        ax.set_ylabel(title, fontsize=font_size)
-        ax.legend(handles=[p, b], labels=["isosbestic", "calcium"], loc=2, fontsize=font_size)
-        ax.set_title("Alignement of Isosbestic and Calcium signals", fontsize=params["fst"])
-        ax.tick_params(axis='both', which='major', labelsize=font_size)
-
-        plt.tight_layout()
-        if params["save"]:
-            plt.savefig(os.path.join(params["save_dir"], "{}.{}".format(fig_name, params["extension"])), dpi=200.)
-
-
-def compute_delta_f(x, isosbestic, calcium, params):
+def compute_delta_f(isosbestic, calcium):
     """
     Function that computes the dF/F of the fitted isosbestic and standardized (or not) calcium
     signals and displays it in a plot.
 
 
-    :param np.array x: The time data in X
-    :param np.array isosbestic: The fitted isosbestic signal
+    :param np.array isosbestic:  The standardized (or not) isosbestic signal
     :param np.array calcium: The standardized (or not) calcium signal
-    :param dict params: Dictionary with the parameters
-    :return: dFF : Relative changes of fluorescence over time
     :rtype: np.array
     """
     print("\nStarting the computation of dF/F !")
-    
-    delta_f = calcium - isosbestic  # computing dF/F
-    data = delta_f
-    line_width = params['lw']
-    font_size = params['fsl']
-    fig_name = 'dFF'
-    standardize = params["photometry_pp"]["standardize"]
-    multiplication_factor = 1 if standardize else 100
-    title = r"z-score $\Delta$F/F" if standardize else r"$\Delta$F/F"
-    
-    if params["photometry_pp"]["plots_to_display"]["dFF"]:
-        plt.figure(figsize=(10, 3), dpi=200.)
-        ax = plt.subplot(111)
-
-        g, = ax.plot(x, data, alpha=0.8, c="green", lw=line_width)
-        add_line_at_zero(ax, x, line_width)
-
-        x_max = x[-1]
-        xticks, xticklabels, unit = utils.generate_xticks_and_labels(x_max)
-        ax.set_xticks(xticks)
-        ax.set_xticklabels(xticklabels, fontsize=font_size)
-        ax.set_xlim(0, x_max)
-        ax.set_xlabel("Time ({0})".format(unit), fontsize=font_size)
-
-        y_min, y_max, round_factor = utils.generate_yticks(data, 0.1)
-        int_ticks = np.arange(y_min, y_max + round_factor, round_factor)
-        ax.set_yticks(int_ticks)
-        int_ticks *= multiplication_factor
-        ticks = ["{:.0f}".format(i) for i in int_ticks]
-        ax.set_yticklabels(ticks, fontsize=font_size)
-        ax.set_ylim(y_min, y_max)
-        ax.set_ylabel(title, fontsize=font_size)
-        ax.legend(handles=[g], labels=[title], loc=2, fontsize=font_size)
-        ax.set_title(title, fontsize=params["fst"])
-        ax.tick_params(axis='both', which='major', labelsize=font_size)
-
-        plt.tight_layout()
-        if params["save"]:
-            plt.savefig(os.path.join(params["save_dir"], "{}.{}".format(fig_name, params["extension"])), dpi=200.)
-            
-    return data
+    delta_f = calcium - isosbestic
+    return delta_f
 
 
 def load_photometry_data(photometry_data_file_path, params):
@@ -358,9 +268,10 @@ def load_photometry_data(photometry_data_file_path, params):
                                                 regression_type=params["photometry_pp"]["regression"])
     plot_ca_iso_regression(isosbestic_standardized, calcium_standardized, isosbestic_fitted, params)
         
-    align_channels(x2, isosbestic_fitted, calcium_standardized, **params)
+    plot_aligned_channels(x2, isosbestic_fitted, calcium_standardized, params)
     
-    delta_f = compute_delta_f(x2, isosbestic_fitted, calcium_standardized, **params)
+    delta_f = compute_delta_f(isosbestic_fitted, calcium_standardized)
+    plot_delta_f(calcium_standardized, isosbestic_fitted, x2, params)
     
     sampling_rate = params["recording_sampling_rate"]
     time_lost = (len(x0) - len(x2))/sampling_rate

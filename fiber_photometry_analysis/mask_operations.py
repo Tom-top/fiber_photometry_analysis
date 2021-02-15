@@ -63,3 +63,54 @@ def find_events_boundaries(mask):
     :return:
     """
     return find_event_starts(mask), find_event_ends(mask)
+
+
+def get_down_times_bool_map(bool_map):
+    zeros_pos = np.concatenate(([0], np.equal(bool_map, 0).view(np.int8), [0]))
+    absolute_diff = np.abs(np.diff(zeros_pos))
+    downtimes = np.where(absolute_diff == 1)[0].reshape(-1, 2)
+    return downtimes
+
+
+def get_up_times_bool_map(bool_map):
+    ones_pos = np.concatenate(([0], np.equal(bool_map, 1).view(np.int8), [0]))
+    absolute_diff = np.abs(np.diff(ones_pos))
+    uptimes = np.where(absolute_diff == 1)[0].reshape(-1, 2)
+    return uptimes
+
+
+def merge_neighboring_events(bool_map, merging_gap):
+    """
+    Algorithm that merges behavioral bouts that are close together.
+
+    :param np.array position_bouts: list of start and end of each behavioral bout
+    :param int max_bout_gap: Maximum number of points between 2 bouts unless they get fused
+    :param int total_length: The size of the source array
+    :return: position_bouts_merged (list) = list of merged start and end of each behavioral bout
+             length_bouts_merged (list) = list of the length of each merged behavioral bout
+    """
+    downtimes = get_down_times_bool_map(bool_map)
+    length_downtimes = downtimes[:, 1] - downtimes[:, 0]
+    small_downtimes_mask = length_downtimes <= merging_gap
+    small_downtimes_pos = np.where(small_downtimes_mask)[0]
+    merged_bool_map = bool_map.copy()
+    for s, e in downtimes[small_downtimes_pos]: # OPTIMISE: numpy
+        merged_bool_map[s:e] = 1
+    return merged_bool_map
+
+
+def filter_small_events(bool_map, event_size):
+    uptimes = get_up_times_bool_map(bool_map)
+    length_uptimes = uptimes[:, 1] - uptimes[:, 0]
+    small_uptimes_mask = length_uptimes <= event_size
+    small_uptimes_pos = np.where(small_uptimes_mask)[0]
+    filtered_bool_map = bool_map.copy()
+    for s, e in uptimes[small_uptimes_pos]: # OPTIMISE: numpy
+        filtered_bool_map[s:e] = 0
+    return filtered_bool_map
+
+def find_start_points_events(bool_map):
+    ones_pos = np.concatenate(([0], np.equal(bool_map, 1).view(np.int8), [0]))
+    absolute_diff = np.diff(ones_pos)
+    start_points = np.where(absolute_diff == 1)[0]
+    return start_points

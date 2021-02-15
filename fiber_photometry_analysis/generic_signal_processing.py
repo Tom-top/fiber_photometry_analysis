@@ -1,5 +1,6 @@
 import numpy as np
 from scipy import sparse
+from scipy.interpolate import interp1d
 from scipy.sparse.linalg import spsolve
 
 from fiber_photometry_analysis.exceptions import FiberPhotometryGenericSignalProcessingValueError
@@ -120,3 +121,7 @@ def crop_signal(signal, sampling_rate, crop_start=0, crop_end=None):
     crop_end = -int(crop_end)*sampling_rate if crop_end is not None else crop_end
 
     return signal if crop_start == 0 and crop_end == 0 else signal[crop_start:crop_end]
+
+def interpolate_signal(signal_x, signal_y, new_x)
+    spl = interp1d(time_video, signal_y)
+    sink = spl(time_final)

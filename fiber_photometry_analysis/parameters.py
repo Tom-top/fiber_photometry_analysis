@@ -24,8 +24,8 @@ def set_parameters(files, allow_downsampling=True):
         "recording_duration": recording_duration,  # The time of recording according to the photometry dataset (s)
         "smoothing_window": int(recording_sampling_rate),  # The window used to smooth the raw signal
         "moving_average_window": int(recording_sampling_rate) * 60,  # The window used to estimate the baseline of each signal
-        "crop_start": 1,  # The time to crop at the begining and the end of the video int(recording_sampling_rate)*30
-        "crop_end": 1,
+        "crop_start": 1*60,  # The time to crop at the begining and the end of the video int(recording_sampling_rate)*30
+        "crop_end": 1*60,
         "down_sampling_factor_photometry": downsampling_factor,
         "lambda": 10**12,  # Lambda parameter for the asymmetric least squares smoothing algorithm
         "p": 0.01,  # Pparameter for the asymmetric least squares smoothing algorithm

@@ -25,6 +25,7 @@ from fiber_photometry_analysis.plot import plot_data_pair, plot_cropped_data, pl
 plt.style.use("default")
 
 from fiber_photometry_analysis import utilities as utils
+from fiber_photometry_analysis import photometry_io as io
 
 
 def extract_raw_data(file_path, params):
@@ -46,7 +47,7 @@ def extract_raw_data(file_path, params):
     calcium = photometry_data["AIn-1 - Dem (AOut-{})".format(kwargs["calcium_channel"])]
     plot_data_pair(calcium, isosbestic, 'raw', kwargs, x, units='mV', to_kilo=True)
 
-    return x, isosbestic_adjusted, calcium_adjusted
+    return x, isosbestic, calcium
 
 
 def adjust_signal_to_video_time(time_video, time_final, source):
@@ -126,7 +127,7 @@ def find_baseline_and_crop(x, isosbestic, calcium, params):  # WARNING: does 2 t
                     params["recording_sampling_rate"],
                     crop_start=params["crop_start"],
                     crop_end=params["crop_end"])
-    x = x - x[0]
+    x = x - x.iloc[0]
     isosbestic = crop_signal(isosbestic,
                              params["recording_sampling_rate"],
                              crop_start=params["crop_start"],
@@ -290,8 +291,8 @@ def load_photometry_data(photometry_data_file_path, params):
         "calcium_standardized": isosbestic_standardized,
         "dF": delta_f,
     })
-    # df = pd.DataFrame({'idx': [1, 2, 3], 'dfs': [df_isosbestic, df_calcium, df_deltaf]})
-    df.to_feather(os.path.join(params["save_dir"], "photometry_data.ftr"))
+    df = io.reset_dataframe_index(df)
+    df.to_feather(os.path.join(params["save_dir"], "photometry_data.feather"))
         
     data = {
         "raw": {

@@ -41,19 +41,21 @@ def save_fig(fig_name, params, save_options={}):
         plt.savefig(fig_path, dpi=200., **save_options)
 
 
-def plot_bouts(ax, colors, length_bouts, position_bouts, y_min, y_max):
-    handles = []
-    for n, P, L in enumerate(zip(position_bouts, length_bouts)):
-        patch = patches.Rectangle((0, 0), 1, 1, alpha=0.3, color=colors[n], lw=0, edgecolor=None)
-        handles.append(patch)
-        for p, l in zip(P, L):
-            patch = patches.Rectangle((p[0], y_min + y_min * 0.1), l, (y_max + y_max * 0.1) - (y_min + y_min * 0.1),
-                                      alpha=0.3, color=colors[n], lw=0, edgecolor=None)
-            ax.add_patch(patch)
-    return handles
-
-
 def set_axis(ax, data, x, add_zero_line, fig_title, label_x, multiplication_factor, y_units, params):
+    """
+    Sets the X and Y axis
+
+    :param matplotlib.axes.Axes ax: The axis to use to plot
+    :param np.array data: The Y data
+    :param np.array x: The X data
+    :param bool add_zero_line: Whether to draw an horizontal line to indicate the baseline
+    :param str fig_title: The name to title the figure
+    :param bool label_x: Whether to label the time axis
+    :param int multiplication_factor: The amount to scale the Y ticks by (1 for none)
+    :param str y_units: The units of the Y axis
+    :param dict params: The usual params dictionary containing all sorts of plotting parameters
+    :return:
+    """
     line_width = params['lw']
     font_size = params['fsl']
 
@@ -83,13 +85,15 @@ def set_axis(ax, data, x, add_zero_line, fig_title, label_x, multiplication_fact
 
 def check_delta_f_with_behavior(bool_map, params, zorder=(0, 1), fig_name="dF_&_behavioral_overlay",
                                 extra_legend_label=""):
-    """Function that plots the pre-processed photometry data and overlays the
+    """
+    Function that plots the pre-processed photometry data and overlays the
     behavior data.
-    
-    Args :  position_bouts (arr) = list of start and end of each behavioral bout
-            length_bouts (list) = list of the length of each behavioral bout
-            color (list) = color(s) of the behavioral overlay(s)
-            kwargs (dict) = dictionary with additional parameters
+
+    :param Union(np.array, list(np.array, np.array) bool_map: The behaviour data as a binary array
+    :param dict params: The plotting parameters
+    :param (int, int) zorder: Tuple of int to indicate the z plot order of each subplot
+    :param str fig_name: The file_name of the figure without extension
+    :param str extra_legend_label: The label of the second plot if bool_map is a list of arrays
     """
 
     data = params["photometry_data"]["dFF"]["dFF"]
@@ -138,15 +142,16 @@ def check_delta_f_with_behavior(bool_map, params, zorder=(0, 1), fig_name="dF_&_
 
 
 def peri_event_plot(data_around_major_bouts, length_major_bouts, cmap="inferno", **params):
-    """Function that plots the peri-event photometry data in two different formats.
+    """
+    Function that plots the peri-event photometry data in two different formats.
     First a line plot showing the average signal before and after initiation of the behavior,
     Second a heatmap showing each individual signal traces before and after initiation of the behavior.
-    
-    Args :  data_around_major_bouts (arr) = list of the pre-processed photometry data
+
+    :param np.array data_around_major_bouts: list of the pre-processed photometry data
             before and after initiation of the behavior
-            length_major_bouts (list) = list of the length of each behavioral bout
-            cmap (str) = colormap used for the heatmap
-            kwargs (dict) = dictionary with additional parameters
+    :param list length_major_bouts: list of the length of each behavioral bout
+    :param str cmap:  colormap used for the heatmap
+    :param dict params:dictionary with additional parameters
     """
     
     mean_data_around_bouts = np.mean(data_around_major_bouts, axis=0)  # Computes the mean for the peri-event photometry data
@@ -270,11 +275,12 @@ def peri_event_plot(data_around_major_bouts, length_major_bouts, cmap="inferno",
 
 
 def peri_event_bar_plot(data_around_major_bouts, **params):
-    """Function that compares the area under the curve (AUC) before and after the intitation of the behavior.
+    """
+    Function that compares the area under the curve (AUC) before and after the intitation of the behavior.
     The results are summarized in a bar plot showing the AUC before and after initiation of the behavior.
-    
-    Args :  data_around_major_bouts (arr) = list of the pre-processed photometry data
-            kwargs (dict) = dictionary with additional parameters
+
+    :param np.array data_around_major_bouts: list of the pre-processed photometry data
+    :param dict params: dictionary with additional parameters
     """
     
     time_before = np.linspace(0, params["peri_event"]["graph_auc_pre"],
@@ -367,20 +373,37 @@ def peri_event_bar_plot(data_around_major_bouts, **params):
     save_fig('AUC', params, save_options={'bbox_inches': 'tight'})
 
 
-def plot_data_pair(calcium_data, isosbestic_data, title, params, x, add_zero_line=False, units='',
-                   to_kilo=False, isosbestic_basline=None, calcium_baseline=None, fig_name=None, fig_title=None):
+def plot_data_pair(calcium_data, isosbestic_data, x, title, params, add_zero_line=False, units='', to_milli=False,
+                   isosbestic_baseline=None, calcium_baseline=None, fig_name=None, fig_title=None):
+    """
+    Plot 2 suplots one above the other with calcium data and then isosbestic data.
+
+    :param np.array calcium_data: The physiological data channel
+    :param np.array isosbestic_data: The morphological optical channel
+    :param np.array x: The time data for the two data types above
+    :param str title: The base title used to compute the figure name and title (if not supplied)
+    :param dict params: Dictionary of additional parameters
+    :param bool add_zero_line: Whether to add an horizontal line at 0
+    :param str units: The name of the Y units
+    :param bool to_milli: Whether to convert Y units to milli units (i.e. *1000)
+    :param np.array isosbestic_baseline: The baseline for the morphological channel
+    :param np.array calcium_baseline: The baseline for the physiological channel
+    :param str fig_name: The path basename of the figure (to not compute using title)
+    :param str fig_title: The title of the figure (to not compute using title)
+    :return:
+    """
     if fig_name is None:
         fig_name = "{}_Signals".format(title.title())
     if fig_title is None:
         fig_title = "{} Isosbestic and Calcium signals".format(title.title())
-    multiplication_factor = 1000 if to_kilo else 1
+    multiplication_factor = 1000 if to_milli else 1
     fig = plt.figure(figsize=(10, 5), dpi=200.)
 
     ax0 = plt.subplot(211)
     line_width = params['lw']
     ax0.plot(x, isosbestic_data, alpha=0.8, c=params["photometry_pp"]['purple_laser'], lw=line_width, label='isosbestic')
-    if isosbestic_basline is not None:
-        ax0.plot(x, isosbestic_basline, alpha=0.8, c="orange", lw=2, label='baseline')
+    if isosbestic_baseline is not None:
+        ax0.plot(x, isosbestic_baseline, alpha=0.8, c="orange", lw=2, label='baseline')
     set_axis(ax0, isosbestic_data, x, add_zero_line, '', False, multiplication_factor, units, params)
     ax0.set_title(fig_title, fontsize=params["fst"])  # REFACTOR: move inside sub_plot
 
@@ -397,16 +420,36 @@ def plot_data_pair(calcium_data, isosbestic_data, title, params, x, add_zero_lin
     save_fig(fig_name, params)
 
 
-def plot_cropped_data(calcium_data, calcium_fc, isosbestic_data, isosbestic_fc, params, x):
+def plot_cropped_data(calcium_data, calcium_fc, isosbestic_data, isosbestic_fc, x, params):
+    """
+    Plot the pre and post crop/detrend data for calcium and isosbestic
+
+    :param np.array calcium_data:
+    :param np.array calcium_fc:
+    :param np.array isosbestic_data:
+    :param np.array isosbestic_fc:
+    :param dict params:
+    :param x:
+    :return:
+    """
     fig_name = 'Baseline_Determination'
     fig_title = "Smoothed Isosbestic and Calcium signals with respective baselines"
 
-    plot_data_pair(calcium_data, isosbestic_data, '', params, x, units='mV', to_kilo=True,
-                   isosbestic_basline=isosbestic_fc, calcium_baseline=calcium_fc, fig_name=fig_name,
+    plot_data_pair(calcium_data, isosbestic_data, x, '', params, units='mV', to_milli=True,
+                   isosbestic_baseline=isosbestic_fc, calcium_baseline=calcium_fc, fig_name=fig_name,
                    fig_title=fig_title)
 
 
 def plot_ca_iso_regression(calcium, isosbestic, isosbestic_fitted, params):
+    """
+    Scatter plot and regression of the calcium vs isosbestic signals
+
+    :param np.array calcium:
+    :param np.array isosbestic:
+    :param np.array isosbestic_fitted:
+    :param dict params:
+    :return:
+    """
     plt.figure(figsize=(5, 5), dpi=200.)
     ax = plt.subplot(111)
     ax.scatter(isosbestic, calcium, color="blue", s=0.5, alpha=0.05)
@@ -420,6 +463,15 @@ def plot_ca_iso_regression(calcium, isosbestic, isosbestic_fitted, params):
 
 
 def plot_delta_f(calcium, isosbestic, x, params):
+    """
+    Plot the delta_F/F
+
+    :param np.array calcium:
+    :param np.array isosbestic:
+    :param np.array x:
+    :param dict params:
+    :return:
+    """
     if params["photometry_pp"]["plots_to_display"]["dFF"]:
         delta_f = calcium - isosbestic
         standardize = params["photometry_pp"]["standardize"]

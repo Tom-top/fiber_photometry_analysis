@@ -45,7 +45,7 @@ def extract_raw_data(file_path, params):
     x = photometry_data["Time(s)"]
     isosbestic = photometry_data["AIn-1 - Dem (AOut-{})".format(params["isosbestic_channel"])]
     calcium = photometry_data["AIn-1 - Dem (AOut-{})".format(params["calcium_channel"])]
-    plot_data_pair(calcium, isosbestic, 'raw', params, x, units='mV', to_kilo=True)
+    plot_data_pair(calcium, isosbestic, x, 'raw', params, units='mV', to_milli=True)
 
     return x, isosbestic, calcium
 
@@ -242,26 +242,26 @@ def load_photometry_data(photometry_data_file_path, params):
              dFF (arr) = Relative changes of fluorescence over time
     """
     x0, isosbestic, calcium = extract_raw_data(photometry_data_file_path, params)
-    plot_data_pair(calcium, isosbestic, 'raw', params, x0, units='mV', to_kilo=True)
+    plot_data_pair(calcium, isosbestic, x0, 'raw', params, units='mV', to_milli=True)
 
     x1, isosbestic_smoothed, calcium_smoothed = smooth(x0, isosbestic, calcium, win_len=params["smoothing_window"])
-    plot_data_pair(calcium_smoothed, isosbestic_smoothed, 'smoothed', params, x1, to_kilo=True)
+    plot_data_pair(calcium_smoothed, isosbestic_smoothed, x1, 'smoothed', params, to_milli=True)
     
     x2, isosbestic_cropped, calcium_cropped, function_isosbestic, function_calcium = find_baseline_and_crop(x1,
                                                                                                             isosbestic_smoothed,
                                                                                                             calcium_smoothed,
                                                                                                             params)
-    plot_cropped_data(calcium, function_calcium, isosbestic, function_isosbestic, params, x2)
+    plot_cropped_data(calcium, function_calcium, isosbestic, function_isosbestic, x2, params)
     
     isosbestic_corrected, calcium_corrected = baseline_correction(isosbestic_cropped, calcium_cropped,
                                                                   function_isosbestic, function_calcium)
-    plot_data_pair(calcium_corrected, isosbestic_corrected, 'baseline_corrected',
-                   params, x2, add_zero_line=True, to_kilo=True)
+    plot_data_pair(calcium_corrected, isosbestic_corrected, x2, 'baseline_corrected', params, add_zero_line=True,
+                   to_milli=True)
 
     isosbestic_standardized, calcium_standardized = standardization(isosbestic_corrected, calcium_corrected,
                                                                     params["photometry_pp"]["standardize"])
-    plot_data_pair(calcium_standardized, isosbestic_standardized, 'Standardized',
-                   params, x2, add_zero_line=True, units='z-score')
+    plot_data_pair(calcium_standardized, isosbestic_standardized, x2, 'Standardized', params, add_zero_line=True,
+                   units='z-score')
 
     isosbestic_fitted = interchannel_regression(isosbestic_standardized, calcium_standardized,
                                                 regression_type=params["photometry_pp"]["regression"])

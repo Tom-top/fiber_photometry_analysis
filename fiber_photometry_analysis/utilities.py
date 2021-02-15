@@ -135,7 +135,7 @@ def set_file_paths(working_directory, experiment, mouse):
     return files
 
 
-def generate_xticks_and_labels(time):
+def generate_xticks_and_labels(time):  # FIXME: extract unit computation
     """Small funtion that automatically generates xticks and labels for plots 
     depending on the length (s) of the data.
     

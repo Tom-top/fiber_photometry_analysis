@@ -81,18 +81,17 @@ trimmed_bool_map = behav_preproc.trim_behavioral_data(bool_map,
                                                       params["crop_end"],
                                                       params["resolution_data"])
 
-plot.check_delta_f_with_behavior(trimmed_bool_map, name="dF_&_behavioral_overlay",
-                                 extra_legend_label="Merged", **params)
+plot.check_delta_f_with_behavior(trimmed_bool_map, params, extra_legend_label="Merged")
 
 merged_bool_map = mask_op.merge_neighboring_events(trimmed_bool_map, max_bout_gap)
 
-plot.check_delta_f_with_behavior([trimmed_bool_map, merged_bool_map], zorder=[0,1], name="dF_&_behavioral_overlay",
-                                 extra_legend_label="Merged", **params)
+plot.check_delta_f_with_behavior([trimmed_bool_map, merged_bool_map], params, zorder=[0, 1],
+                                 extra_legend_label="Merged")
 
 filtered_bool_map = mask_op.filter_small_events(merged_bool_map, minimal_bout_length)
 
-plot.check_delta_f_with_behavior([merged_bool_map, filtered_bool_map], zorder=[1,0], name="dF_&_behavioral_overlay",
-                                 extra_legend_label="Filtered out", **params)
+plot.check_delta_f_with_behavior([merged_bool_map, filtered_bool_map], params, zorder=[1, 0],
+                                 extra_legend_label="Filtered out")
 
 interpolated_x, interpolated_delta_f = gen_preproc.interpolate_signal(params["photometry_data"]["dFF"]["x"],
                                                                       params["photometry_data"]["dFF"]["dFF"],

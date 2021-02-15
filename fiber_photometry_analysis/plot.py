@@ -11,7 +11,6 @@ import os
 import numpy as np
 
 import matplotlib.colors as col
-import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib import pyplot as plt
 from matplotlib.widgets import MultiCursor
@@ -34,6 +33,14 @@ def add_line_at_zero(ax, x, line_width, color='black'):
     ax.plot((0, x[-1]), (0, 0), "--", color=color, lw=line_width)
 
 
+def save_fig(fig_name, params, save_options={}):
+    plt.tight_layout()
+    if params["save"]:
+        fig_path = os.path.join(params["save_dir"],
+                                "{}.{}".format(fig_name, params["extension"]))
+        plt.savefig(fig_path, dpi=200., **save_options)
+
+
 def plot_bouts(ax, colors, length_bouts, position_bouts, y_min, y_max):
     handles = []
     for n, P, L in enumerate(zip(position_bouts, length_bouts)):
@@ -46,7 +53,36 @@ def plot_bouts(ax, colors, length_bouts, position_bouts, y_min, y_max):
     return handles
 
 
-def check_delta_f_with_behavior(position_bouts, length_bouts, colors=("blue"), fig_name="dF_&_behavioral_overlay", **params):
+def set_axis(ax, data, x, add_zero_line, fig_title, label_x, multiplication_factor, y_units, params):
+    line_width = params['lw']
+    font_size = params['fsl']
+
+    if add_zero_line:
+        add_line_at_zero(ax, x, line_width)
+    x_max = x[-1]
+    xticks, xticklabels, unit = utils.generate_xticks_and_labels(x_max)
+    ax.set_xticks(xticks)
+    ax.set_xticklabels(xticklabels, fontsize=font_size)
+    ax.set_xlim(0, x_max)
+    if label_x:
+        ax.set_xlabel("Time ({0})".format(unit), fontsize=font_size)
+    y_min, y_max, round_factor = utils.generate_yticks(data, 0.1)
+    int_ticks = np.arange(y_min, y_max + round_factor, round_factor)
+    ax.set_yticks(int_ticks)
+    int_ticks *= multiplication_factor
+    ticks = ["{:.0f}".format(i) for i in int_ticks]
+    ax.set_yticklabels(ticks, fontsize=font_size)
+    ax.set_ylim(y_min, y_max)
+    if y_units:
+        ax.set_ylabel(y_units, fontsize=font_size)
+    ax.legend(loc=2, fontsize=font_size)
+    if fig_title:
+        ax.set_title(fig_title, fontsize=params["fst"])
+    ax.tick_params(axis='both', which='major', labelsize=font_size)
+
+
+def check_delta_f_with_behavior(bool_map, params, zorder=(0, 1), fig_name="dF_&_behavioral_overlay",
+                                extra_legend_label=""):
     """Function that plots the pre-processed photometry data and overlays the
     behavior data.
     
@@ -56,69 +92,70 @@ def check_delta_f_with_behavior(position_bouts, length_bouts, colors=("blue"), f
             kwargs (dict) = dictionary with additional parameters
     """
 
-    x_delta_f = params["photometry_data"]["dFF"]["x"]
-y_delta_f = params["photometry_data"]["dFF"]["dFF"]
-line_width = params['lw']
-font_size = params['fsl']
-standardize = params["photometry_pp"]["standardize"]
-multiplication_factor = 1 if standardize else 100
+    data = params["photometry_data"]["dFF"]["dFF"]
+    x = params["photometry_data"]["dFF"]["x"]
+    line_width = params['lw']
+    font_size = params['fsl']
+    standardize = params["photometry_pp"]["standardize"]
+    multiplication_factor = 1 if standardize else 100
 
-labels = [params["behavior_to_segment"]]
-colors = ["red", "orange"]
-y_min, y_max, round_factor = utils.generate_yticks(y_delta_f, 0.1)
-event_plot_args = {"linelengths": y_max - y_min,
-                   "lineoffsets": (y_max + y_min) / 2,
-                   "alpha": 1,
-                   }
+    labels = [params["behavior_to_segment"]]
+    colors = ["red", "orange"]
+    y_min, y_max, round_factor = utils.generate_yticks(data, 0.1)
+    event_plot_args = {
+        "linelengths": y_max - y_min,
+        "lineoffsets": (y_max + y_min) / 2,
+        "alpha": 1
+    }
 
-plt.figure(figsize=(10, 3), dpi=200.)
-ax = plt.subplot(111)
+    plt.figure(figsize=(10, 3), dpi=200.)
+    ax = plt.subplot(111)
 
-plot_handles = []
-if isinstance(bool_map, np.ndarray):
-    raster_data_raw = behav_preproc.get_position_from_bool_map(bool_map, params["resolution_data"])
-elif isinstance(bool_map, list) and len(bool_map) == 2:
-    labels .append("{}".format(extra_legend_label))
-    raster_data_raw = behav_preproc.get_position_from_bool_map(bool_map[0], params["resolution_data"])
-    raster_data_processed = behav_preproc.get_position_from_bool_map(bool_map[1], params["resolution_data"])
+    plot_handles = []
+    if isinstance(bool_map, np.ndarray):
+        raster_data_raw = behav_preproc.get_position_from_bool_map(bool_map, params["resolution_data"])
+    elif isinstance(bool_map, list) and len(bool_map) == 2:
+        labels .append("{}".format(extra_legend_label))
+        raster_data_raw = behav_preproc.get_position_from_bool_map(bool_map[0], params["resolution_data"])
+        raster_data_processed = behav_preproc.get_position_from_bool_map(bool_map[1], params["resolution_data"])
 
-    b1, = ax.eventplot(raster_data_processed,
-                        color=colors[zorder[0]],
-                        zorder=zorder[0],
-                        **event_plot_args)
-    plot_handles[zorder[1]] = b1
+        b1, = ax.eventplot(raster_data_processed,
+                           color=colors[zorder[0]],
+                           zorder=zorder[0],
+                           **event_plot_args)
+        plot_handles[zorder[1]] = b1
 
-b2, = ax.eventplot(raster_data_raw,
-                    color=colors[zorder[1]],
-                    zorder=zorder[1],
-                    **event_plot_args)
-plot_handles[zorder[0]] = b2
+    b2, = ax.eventplot(raster_data_raw,
+                       color=colors[zorder[1]],
+                       zorder=zorder[1],
+                       **event_plot_args)
+    plot_handles[zorder[0]] = b2
 
-ax.plot(x_delta_f, y_delta_f, zorder=2, color="green", lw=line_width)
+    ax.plot(x, data, zorder=2, color="green", lw=line_width)
 
-add_line_at_zero(ax, x, line_width, color='blue')
+    add_line_at_zero(ax, x, line_width, color='blue')
 
-x_max = x_delta_f.iloc[-1]
-xticks, xticklabels, unit = utils.generate_xticks_and_labels(x_max)
-ax.set_xticks(xticks)
-ax.set_xticklabels(xticklabels, fontsize=font_size)
-ax.set_xlim(0, x_max)
-ax.set_xlabel("Time ({0})".format(unit), fontsize=font_size)
+    x_max = x.iloc[-1]
+    xticks, xticklabels, unit = utils.generate_xticks_and_labels(x_max)
+    ax.set_xticks(xticks)
+    ax.set_xticklabels(xticklabels, fontsize=font_size)
+    ax.set_xlim(0, x_max)
+    if unit:
+        ax.set_xlabel("Time ({0})".format(unit), fontsize=font_size)
 
-int_ticks = np.arange(y_min, y_max + round_factor, round_factor)
-ax.set_yticks(int_ticks)
-int_ticks *= multiplication_factor
-ticks = ["{:.0f}".format(i) for i in int_ticks]
-ax.set_yticklabels(ticks, fontsize=font_size)
-ax.set_ylim(y_min, y_max)
+    int_ticks = np.arange(y_min, y_max + round_factor, round_factor)
+    ax.set_yticks(int_ticks)
+    int_ticks *= multiplication_factor
+    ticks = ["{:.0f}".format(i) for i in int_ticks]
+    ax.set_yticklabels(ticks, fontsize=font_size)
+    ax.set_ylim(y_min, y_max)
 
-ax.legend(handles=plot_handles, labels=labels, loc=2, fontsize=font_size)
-    plt.tight_layout()
-    if params["save"]:
-        plt.savefig(os.path.join(params["save_dir"], "{}.{}".format(fig_name, params["extension"])), dpi=200.)
+    ax.legend(handles=plot_handles, labels=labels, loc=2, fontsize=font_size)  # FIXME: change to use set_axis
+
+    save_fig(fig_name, params)
 
 
-def peri_event_plot(data_around_major_bouts, length_major_bouts, cmap="inferno", **kwargs):
+def peri_event_plot(data_around_major_bouts, length_major_bouts, cmap="inferno", **params):
     """Function that plots the peri-event photometry data in two different formats.
     First a line plot showing the average signal before and after initiation of the behavior,
     Second a heatmap showing each individual signal traces before and after initiation of the behavior.
@@ -142,19 +179,19 @@ def peri_event_plot(data_around_major_bouts, length_major_bouts, cmap="inferno",
     ax0 = plt.subplot(2, 1, 1)  # Creates a subplot for the first figure
     
     x_range = np.linspace(0, len(mean_data_around_bouts), len(mean_data_around_bouts))
-    ax0.plot(x_range, mean_data_around_bouts, color="green", alpha=1., lw=kwargs["lw"]+1, zorder=1)  # Plots the average signal
+    ax0.plot(x_range, mean_data_around_bouts, color="green", alpha=1., lw=params["lw"] + 1, zorder=1)  # Plots the average signal
     
-    if kwargs["peri_event"]["style"] == "individual":  # If individual traces are to be displayed in the line plot
+    if params["peri_event"]["style"] == "individual":  # If individual traces are to be displayed in the line plot
         for l in data_around_major_bouts:
-            if kwargs["peri_event"]["individual_color"]:
-                ax0.plot(l, alpha=0.5, lw=kwargs["lw"], zorder=0)  # Plots individual traces
+            if params["peri_event"]["individual_color"]:
+                ax0.plot(l, alpha=0.5, lw=params["lw"], zorder=0)  # Plots individual traces
             else:
-                ax0.plot(l, color="gray", alpha=0.5, lw=kwargs["lw"], zorder=0)  # Plots individual traces
+                ax0.plot(l, color="gray", alpha=0.5, lw=params["lw"], zorder=0)  # Plots individual traces
             
         ax0.plot(x_range, mean_data_around_bouts + std_data_around_bouts,
-                 color="green", alpha=0.5, lw=kwargs["lw"], zorder=1)
+                 color="green", alpha=0.5, lw=params["lw"], zorder=1)
         ax0.plot(x_range, mean_data_around_bouts - std_data_around_bouts,
-                 color="green", alpha=0.5, lw=kwargs["lw"], zorder=1)
+                 color="green", alpha=0.5, lw=params["lw"], zorder=1)
         
         ax0.fill_between(x_range, mean_data_around_bouts, (mean_data_around_bouts + std_data_around_bouts),
                          color="green", alpha=0.1)
@@ -162,50 +199,45 @@ def peri_event_plot(data_around_major_bouts, length_major_bouts, cmap="inferno",
                          color="green", alpha=0.1)
         
         y_min, y_max, round_factor = utils.generate_yticks(data_around_major_bouts.flatten(), 0.2)
-        y_range = y_max - y_min
-        ax0.set_yticks(np.arange(y_min, y_max+round_factor, round_factor))
-        ax0.set_yticklabels(["{:.0f}".format(i) for i in np.arange(y_min, y_max+round_factor, round_factor)], fontsize=kwargs["fsl"])
-        ax0.set_ylim(y_min, y_max)
-    elif kwargs["peri_event"]["style"] == "average":
+    elif params["peri_event"]["style"] == "average":
         ax0.plot(x_range, mean_data_around_bouts + std_data_around_bouts,
-                 color="green", alpha=0.3, lw=kwargs["lw"])
+                 color="green", alpha=0.3, lw=params["lw"])
         ax0.plot(x_range, mean_data_around_bouts - std_data_around_bouts,
-                 color="green", alpha=0.3, lw=kwargs["lw"])
+                 color="green", alpha=0.3, lw=params["lw"])
         
         ax0.fill_between(x_range, mean_data_around_bouts, (mean_data_around_bouts + std_data_around_bouts),
                          color="green", alpha=0.1)
         ax0.fill_between(x_range, mean_data_around_bouts, (mean_data_around_bouts - std_data_around_bouts),
                          color="green", alpha=0.1)
-        
         y_min, y_max, round_factor = utils.generate_yticks(np.concatenate((mean_data_around_bouts + std_data_around_bouts, mean_data_around_bouts - std_data_around_bouts)), 0.2)
     else:
-        raise NotImplementedError('Unrecognised style keyword "{}"'.format(kwargs["peri_event"]["style"]))
+        raise NotImplementedError('Unrecognised style keyword "{}"'.format(params["peri_event"]["style"]))
     y_range = y_max - y_min
     ax0.set_yticks(np.arange(y_min, y_max+round_factor, round_factor))
-    ax0.set_yticklabels(["{:.0f}".format(i) for i in np.arange(y_min, y_max+round_factor, round_factor)], fontsize=kwargs["fsl"])
+    ax0.set_yticklabels(["{:.0f}".format(i) for i in np.arange(y_min, y_max+round_factor, round_factor)], fontsize=params["fsl"])
     ax0.set_ylim(y_min, y_max)
     
     # Creates a gray square on the line plot that represents the average length of a behavioral bout
-    patch = patches.Rectangle(((kwargs["peri_event"]["graph_distance_pre"]+0.5)*kwargs["recording_sampling_rate"],
-                               - y_range*0.1),
-                              width=np.mean(length_major_bouts)*kwargs["recording_sampling_rate"],
+    patch = patches.Rectangle(((params["peri_event"]["graph_distance_pre"] + 0.5) * params["recording_sampling_rate"],
+                               - y_range * 0.1),
+                              width=np.mean(length_major_bouts) * params["recording_sampling_rate"],
                               height=y_range*0.1,
                               color="gray",
                               lw=0,
                               alpha=0.7)
     
     ax0.add_patch(patch)  # Adds the patch to the plot
-    ax0.plot((0, len(mean_data_around_bouts)), (0, 0), "--", color="black", lw=kwargs["lw"])  # Creates a horizontal dashed line at y = 0 to signal the baseline
-    vline = ax0.axvline(x=(kwargs["peri_event"]["graph_distance_pre"]+0.5) * kwargs["recording_sampling_rate"],
-                        color='red', linestyle='--', lw=kwargs["lw"])  # Creates a vertical dashed line at x = 0 to signal the begining of the behavioral bout
+    ax0.plot((0, len(mean_data_around_bouts)), (0, 0), "--", color="black", lw=params["lw"])  # Creates a horizontal dashed line at y = 0 to signal the baseline
+    vline = ax0.axvline(x=(params["peri_event"]["graph_distance_pre"] + 0.5) * params["recording_sampling_rate"],
+                        color='red', linestyle='--', lw=params["lw"])  # Creates a vertical dashed line at x = 0 to signal the begining of the behavioral bout
     
-    ax0.set_xticks(np.linspace(0, ((kwargs["peri_event"]["graph_distance_pre"] + kwargs["peri_event"]["graph_distance_post"]+1) * kwargs["recording_sampling_rate"]), 5)) #Generates ticks for the x axis
-    ax0.set_xticklabels(np.linspace(-kwargs["peri_event"]["graph_distance_pre"], kwargs["peri_event"]["graph_distance_post"], 5), fontsize=kwargs["fsl"])  # Generates labels for the x axis
+    ax0.set_xticks(np.linspace(0, ((params["peri_event"]["graph_distance_pre"] + params["peri_event"]["graph_distance_post"] + 1) * params["recording_sampling_rate"]), 5)) #Generates ticks for the x axis
+    ax0.set_xticklabels(np.linspace(-params["peri_event"]["graph_distance_pre"], params["peri_event"]["graph_distance_post"], 5), fontsize=params["fsl"])  # Generates labels for the x axis
     ax0.set_xlim(0, len(mean_data_around_bouts))  # Sets the limits for the x axis
 #    ax0.set_xlabel("Time (s)", fontsize=kwargs["fsl"]) #Displays the label for the x axis
 
     ax0.legend(handles=[vline, patch], labels=["Begining of bout", "Average behavioral bout length"],
-               loc=2, fontsize=kwargs["fsl"])  # Displays the legend of the first figure
+               loc=2, fontsize=params["fsl"])  # Displays the legend of the first figure
     
     # =============================================================================
     #     Second Plot
@@ -213,52 +245,49 @@ def peri_event_plot(data_around_major_bouts, length_major_bouts, cmap="inferno",
     
     ax1 = plt.subplot(2, 1, 2)  # Creates a subplot for the second figure
     
-    if not kwargs["peri_event"]["normalize_heatmap"]:
+    if not params["peri_event"]["normalize_heatmap"]:
         heatmap = ax1.imshow(data_around_major_bouts, cmap=cmap, aspect="auto",
                              interpolation="none")
     else:
         heatmap = ax1.imshow(data_around_major_bouts, cmap=cmap, aspect="auto",
                              norm=col.LogNorm(), interpolation="none")  # norm=matplotlib.colors.LogNorm()
         
-    ax1.axvline(x=(kwargs["peri_event"]["graph_distance_pre"]+0.5)*kwargs["recording_sampling_rate"],
-                color='red', linestyle='--', lw=kwargs["lw"])
+    ax1.axvline(x=(params["peri_event"]["graph_distance_pre"] + 0.5) * params["recording_sampling_rate"],
+                color='red', linestyle='--', lw=params["lw"])
         
-    ax1.set_xticks(np.linspace(0, ((kwargs["peri_event"]["graph_distance_pre"] + kwargs["peri_event"]["graph_distance_post"]+1) * kwargs["recording_sampling_rate"]), 5)) #Generates ticks for the x axis
-    ax1.set_xticklabels(np.linspace(-kwargs["peri_event"]["graph_distance_pre"], kwargs["peri_event"]["graph_distance_post"], 5), fontsize=kwargs["fsl"]) #Generates labels for the x axis
+    ax1.set_xticks(np.linspace(0, ((params["peri_event"]["graph_distance_pre"] + params["peri_event"]["graph_distance_post"] + 1) * params["recording_sampling_rate"]), 5)) #Generates ticks for the x axis
+    ax1.set_xticklabels(np.linspace(-params["peri_event"]["graph_distance_pre"], params["peri_event"]["graph_distance_post"], 5), fontsize=params["fsl"]) #Generates labels for the x axis
     ax1.set_xlim(0, len(mean_data_around_bouts))  # Sets the limits for the x axis
-    ax1.set_xlabel("Time (s)", fontsize=kwargs["fsl"])  # Displays the label for the x axis
+    ax1.set_xlabel("Time (s)", fontsize=params["fsl"])  # Displays the label for the x axis
     
     ax1.set_yticks([])
     ax1.set_ylim(-0.5, len(data_around_major_bouts) - 0.5)
-    ax1.set_ylabel("Duration of individual bouts (s)", fontsize=kwargs["fsl"], labelpad=20)  # Displays the label for the x axis
+    ax1.set_ylabel("Duration of individual bouts (s)", fontsize=params["fsl"], labelpad=20)  # Displays the label for the x axis
 
     for n, l in enumerate(length_major_bouts):
-        ax1.text(-len(mean_data_around_bouts) * 0.01, n, l, ha="right", va="center", fontsize=kwargs["fsl"])
+        ax1.text(-len(mean_data_around_bouts) * 0.01, n, l, ha="right", va="center", fontsize=params["fsl"])
     
     plt.gca().invert_yaxis()
     cax = fig.add_axes([1, 0.1, 0.02, 0.35])
     cb = plt.colorbar(heatmap, ax=ax1, cax=cax)
-    cb.ax.tick_params(labelsize=kwargs["fsl"])
+    cb.ax.tick_params(labelsize=params["fsl"])
     cb.ax.get_yaxis().labelpad = 8
     
-    if kwargs["photometry_pp"]["standardize"]:
-        ax0.set_ylabel(r"$\Delta$F/F (Z-Score)", fontsize=kwargs["fsl"]) #Displays the label for the y axis
-        ax0.set_title(r"$\Delta$F/F (Z-Score) in function of time before & after {0} initiation".format(kwargs["behavior_to_segment"]), fontsize=kwargs["fst"]) #Displays the titel for the first figure
-        ax1.set_title(r"Individual $\Delta$F/F (Z-Score) in function of time before & after {0} initiation".format(kwargs["behavior_to_segment"]), fontsize=kwargs["fst"])
-        cb.ax.set_ylabel(r"$\Delta$F/F (Z-Score)", rotation=270, fontsize=kwargs["fsl"])
+    if params["photometry_pp"]["standardize"]:
+        ax0.set_ylabel(r"$\Delta$F/F (Z-Score)", fontsize=params["fsl"]) #Displays the label for the y axis
+        ax0.set_title(r"$\Delta$F/F (Z-Score) in function of time before & after {0} initiation".format(params["behavior_to_segment"]), fontsize=params["fst"]) #Displays the titel for the first figure
+        ax1.set_title(r"Individual $\Delta$F/F (Z-Score) in function of time before & after {0} initiation".format(params["behavior_to_segment"]), fontsize=params["fst"])
+        cb.ax.set_ylabel(r"$\Delta$F/F (Z-Score)", rotation=270, fontsize=params["fsl"])
     else:
-        ax0.set_ylabel(r"$\Delta$F/F (%)", fontsize=kwargs["fsl"]) #Displays the label for the y axis
-        ax0.set_title(r"$\Delta$F/F (%) in function of time before & after {0} initiation".format(kwargs["behavior_to_segment"]), fontsize=kwargs["fst"]) #Displays the titel for the first figure
-        ax1.set_title(r"Individual $\Delta$F/F (%) in function of time before & after {0} initiation".format(kwargs["behavior_to_segment"]), fontsize=kwargs["fst"])
-        cb.ax.set_ylabel(r"$\Delta$F/F (%)", rotation=270, fontsize=kwargs["fsl"])
-        
-    plt.tight_layout()
-    
-    if kwargs["save"]:
-        plt.savefig(os.path.join(kwargs["save_dir"], "Peri_Event_Plot.{0}".format(kwargs["extension"])), dpi=200., bbox_inches='tight')
+        ax0.set_ylabel(r"$\Delta$F/F (%)", fontsize=params["fsl"]) #Displays the label for the y axis
+        ax0.set_title(r"$\Delta$F/F (%) in function of time before & after {0} initiation".format(params["behavior_to_segment"]), fontsize=params["fst"]) #Displays the titel for the first figure
+        ax1.set_title(r"Individual $\Delta$F/F (%) in function of time before & after {0} initiation".format(params["behavior_to_segment"]), fontsize=params["fst"])
+        cb.ax.set_ylabel(r"$\Delta$F/F (%)", rotation=270, fontsize=params["fsl"])
+
+    save_fig('Peri_Event_Plot', params, save_options={'bbox_inches': 'tight'})
 
 
-def peri_event_bar_plot(data_around_major_bouts, **kwargs):
+def peri_event_bar_plot(data_around_major_bouts, **params):
     """Function that compares the area under the curve (AUC) before and after the intitation of the behavior.
     The results are summarized in a bar plot showing the AUC before and after initiation of the behavior.
     
@@ -266,15 +295,15 @@ def peri_event_bar_plot(data_around_major_bouts, **kwargs):
             kwargs (dict) = dictionary with additional parameters
     """
     
-    time_before = np.linspace(0, kwargs["peri_event"]["graph_auc_pre"],
-                              kwargs["peri_event"]["graph_auc_pre"] * kwargs["recording_sampling_rate"])
-    data_before = data_around_major_bouts[:, 0: kwargs["peri_event"]["graph_auc_pre"] * kwargs["recording_sampling_rate"]]
+    time_before = np.linspace(0, params["peri_event"]["graph_auc_pre"],
+                              params["peri_event"]["graph_auc_pre"] * params["recording_sampling_rate"])
+    data_before = data_around_major_bouts[:, 0: params["peri_event"]["graph_auc_pre"] * params["recording_sampling_rate"]]
     
-    time_after = np.linspace(0, kwargs["peri_event"]["graph_auc_post"],
-                             kwargs["peri_event"]["graph_auc_post"] * kwargs["recording_sampling_rate"])
-    data_after = data_around_major_bouts[:, (kwargs["peri_event"]["graph_auc_pre"]+1) * kwargs["recording_sampling_rate"]: (kwargs["peri_event"]["graph_auc_pre"]+1+kwargs["peri_event"]["graph_auc_post"])*kwargs["recording_sampling_rate"]]
+    time_after = np.linspace(0, params["peri_event"]["graph_auc_post"],
+                             params["peri_event"]["graph_auc_post"] * params["recording_sampling_rate"])
+    data_after = data_around_major_bouts[:, (params["peri_event"]["graph_auc_pre"] + 1) * params["recording_sampling_rate"]: (params["peri_event"]["graph_auc_pre"] + 1 + params["peri_event"]["graph_auc_post"]) * params["recording_sampling_rate"]]
     
-    all_auc1 = [auc(time_before, i) for i in data_before]
+    all_auc1 = [auc(time_before, i) for i in data_before]  # OPTIMISE: map or apply
     auc1_mean = auc(time_before, np.mean(data_before, axis=0))
     auc1_std = auc(time_before, np.std(data_before, axis=0))
     
@@ -341,122 +370,119 @@ def peri_event_bar_plot(data_around_major_bouts, **kwargs):
 
     int_ticks = np.arange(round(y_min), round(y_max + y_max * 0.3) + 2, 1)
     ax0.set_yticks(int_ticks)
-    ax0.set_yticklabels(int_ticks, fontsize=kwargs["fsl"])
-    ax0.plot((-0.5, 1.5), (0, 0), lw=1, color="black")
+    ax0.set_yticklabels(int_ticks, fontsize=params["fsl"])
+    ax0.plot((-0.5, 1.5), (0, 0), lw=1, color="black")  # FIXME: add_zero_line ??
     ax0.set_xticks([0, 1])
-    ax0.set_xticklabels(["Before initiating {0}".format(kwargs["behavior_to_segment"]),
-                         "After initiating {0}".format(kwargs["behavior_to_segment"])],
-                        fontsize=kwargs["fsl"])
+    ax0.set_xticklabels(["Before initiating {0}".format(params["behavior_to_segment"]),
+                         "After initiating {0}".format(params["behavior_to_segment"])],
+                        fontsize=params["fsl"])
     
     ax0.set_ylim(y_min+y_min*0.5, y_max+y_max*0.5)
-    ax0.set_ylabel("Area under the curve (AUC)", fontsize=kwargs["fsl"])
-    ax0.set_title("Before vs After initiation of {0} Response Changes".format(kwargs["behavior_to_segment"]),
-                  fontsize=kwargs["fst"])
-    
-    fig.tight_layout()
-    
-    if kwargs["save"]:
-        plt.savefig(os.path.join(kwargs["save_dir"], "AUC.{0}".format(kwargs["extension"])),
-                    dpi=200., bbox_inches='tight')
+    ax0.set_ylabel("Area under the curve (AUC)", fontsize=params["fsl"])
+    ax0.set_title("Before vs After initiation of {0} Response Changes".format(params["behavior_to_segment"]),
+                  fontsize=params["fst"])
+
+    save_fig('AUC', params, save_options={'bbox_inches': 'tight'})
 
 
-def plot_data_pair(calcium_data, isosbestic_data, title, kwargs, x, add_zero_line=False, units='', to_kilo=False):
+def plot_data_pair(calcium_data, isosbestic_data, title, params, x, add_zero_line=False, units='',
+                   to_kilo=False, isosbestic_basline=None, calcium_baseline=None, fig_name=None, fig_title=None):
+    if fig_name is None:
+        fig_name = "{}_Signals".format(title.title())
+    if fig_title is None:
+        fig_title = "{} Isosbestic and Calcium signals".format(title.title())
     multiplication_factor = 1000 if to_kilo else 1
-
     fig = plt.figure(figsize=(10, 5), dpi=200.)
 
     ax0 = plt.subplot(211)
-    sub_plot(data=isosbestic_data, x=x, ax=ax0, laser='purple_laser', label='isosbestic', params=kwargs,
-             add_zero_line=add_zero_line, units=units, multiplication_factor=multiplication_factor)
-    ax0.set_title("{} Isosbestic and Calcium signals".format(title.title()), fontsize=kwargs["fst"])
-
-    ax1 = plt.subplot(212, sharex=ax0)
-    sub_plot(data=calcium_data, x=x, ax=ax1, laser='blue_laser', label='calcium', params=kwargs,
-             add_zero_line=add_zero_line, units=units, multiplication_factor=multiplication_factor)
-    ax1.set_xlabel("Time ({0})".format(unit), fontsize=kwargs["fsl"])
-
-    plt.tight_layout()
-    plt.show()
-
-    if kwargs["photometry_pp"]["multicursor"]:
-        multi = MultiCursor(fig.canvas, [ax0, ax1], color='r', lw=1, vertOn=[ax0, ax1])  # FIXME: unused
-    if kwargs["save"]:
-        plt.savefig(os.path.join(kwargs["save_dir"],
-                                 "{}_Signals.{}".format(title.title(), kwargs["extension"])),
-                    dpi=200.)
-
-
-def sub_plot(data, x, ax, laser, label, params, add_zero_line, units, multiplication_factor, baseline=None):
     line_width = params['lw']
-    font_size = params['fsl']
-
-    plot_handle, = ax.plot(x, data, alpha=0.8, c=params["photometry_pp"][laser],
-                           lw=line_width)
-    plot_handles = [plot_handle]
-    labels = [label]
-    if baseline is not None:
-        plot_handle_2, = ax.plot(x, baseline, alpha=0.8, c="orange", lw=2)
-        plot_handles.append(plot_handle_2)
-        labels.append('baseline')
-    if add_zero_line:
-        add_line_at_zero(ax, x, line_width)
-
-    x_max = x.iloc[-1]
-    xticks, xticklabels, unit = utils.generate_xticks_and_labels(x_max)
-    ax.set_xticks(xticks)
-    ax.set_xticklabels(xticklabels, fontsize=font_size)
-    ax.set_xlim(0, x_max)
-
-    y_min, y_max, round_factor = utils.generate_yticks(data, 0.1)
-    int_ticks = np.arange(y_min, y_max + round_factor, round_factor)
-    ax.set_yticks(int_ticks)
-    int_ticks *= multiplication_factor
-    ticks = ["{:.0f}".format(i) for i in int_ticks]
-    ax.set_yticklabels(ticks, fontsize=font_size)
-    ax.set_ylim(y_min, y_max)
-    if units:
-        ax.set_ylabel(units, fontsize=font_size)
-    ax.legend(handles=plot_handles, labels=labels, loc=2, fontsize=font_size)
-    ax.tick_params(axis='both', which='major', labelsize=font_size)
-
-
-def plot_cropped_data(calcium, calcium_fc, isosbestic, isosbestic_fc, kwargs, x):
-    fig = plt.figure(figsize=(10, 5), dpi=200.)
-
-    ax0 = plt.subplot(211)
-    sub_plot(data=isosbestic, x=x, ax=ax0, laser='purple_laser', label='isosbestic', params=kwargs, add_zero_line=False,
-             units='mV', multiplication_factor=1000, baseline=isosbestic_fc)
-    ax0.set_title("Smoothed Isosbestic and Calcium signals with respective baselines", fontsize=kwargs["fst"])
+    ax0.plot(x, isosbestic_data, alpha=0.8, c=params["photometry_pp"]['purple_laser'], lw=line_width, label='isosbestic')
+    if isosbestic_basline is not None:
+        ax0.plot(x, isosbestic_basline, alpha=0.8, c="orange", lw=2, label='baseline')
+    set_axis(ax0, isosbestic_data, x, add_zero_line, '', False, multiplication_factor, units, params)
+    ax0.set_title(fig_title, fontsize=params["fst"])  # REFACTOR: move inside sub_plot
 
     ax1 = plt.subplot(212, sharex=ax0)
-    sub_plot(data=calcium, x=x, ax=ax1, laser='blue_laser', label='calcium', params=kwargs, add_zero_line=False,
-             units='mV', multiplication_factor=1000, baseline=calcium_fc)
-    ax1.set_xlabel("Time ({0})".format(unit), fontsize=kwargs["fsl"])
+    ax1.plot(x, calcium_data, alpha=0.8, c=params["photometry_pp"]['blue_laser'], lw=line_width, label='calcium')
+    if calcium_baseline is not None:
+        ax1.plot(x, calcium_baseline, alpha=0.8, c="orange", lw=2, label='baseline')
+    set_axis(ax1, calcium_data, x, add_zero_line, '', True, multiplication_factor, units, params)
 
-    plt.tight_layout()
     plt.show()
 
-    if kwargs["photometry_pp"]["multicursor"]:
+    if params["photometry_pp"]["multicursor"]:
         multi = MultiCursor(fig.canvas, [ax0, ax1], color='r', lw=1, vertOn=[ax0, ax1])  # FIXME: unused
-    if kwargs["save"]:
-        plt.savefig(os.path.join(kwargs["save_dir"],
-                                 "Baseline_Determination.{0}".format(kwargs["extension"])),
-                    dpi=200.)
+    save_fig(fig_name, params)
 
 
-def plot_ca_iso_regression(calcium, isosbestic, isosbestic_fitted, kwargs):
+def plot_cropped_data(calcium_data, calcium_fc, isosbestic_data, isosbestic_fc, params, x):
+    fig_name = 'Baseline_Determination'
+    fig_title = "Smoothed Isosbestic and Calcium signals with respective baselines"
+
+    plot_data_pair(calcium_data, isosbestic_data, '', params, x, units='mV', to_kilo=True,
+                   isosbestic_basline=isosbestic_fc, calcium_baseline=calcium_fc, fig_name=fig_name,
+                   fig_title=fig_title)
+
+
+def plot_ca_iso_regression(calcium, isosbestic, isosbestic_fitted, params):
     plt.figure(figsize=(5, 5), dpi=200.)
     ax = plt.subplot(111)
     ax.scatter(isosbestic, calcium, color="blue", s=0.5, alpha=0.05)
     ax.plot(isosbestic, isosbestic_fitted, 'r-', linewidth=1)
-    ax.set_xlabel("Isosbestic", fontsize=kwargs["fsl"])
-    ax.set_ylabel("Calcium", fontsize=kwargs["fsl"])
-    ax.set_title("Inter-channel regression of Isosbestic and Calcium signals", fontsize=kwargs["fst"])
-    ax.tick_params(axis='both', which='major', labelsize=kwargs["fsl"])
+    ax.set_xlabel("Isosbestic", fontsize=params["fsl"])
+    ax.set_ylabel("Calcium", fontsize=params["fsl"])
+    ax.set_title("Inter-channel regression of Isosbestic and Calcium signals", fontsize=params["fst"])
+    ax.tick_params(axis='both', which='major', labelsize=params["fsl"])
 
-    plt.tight_layout()
+    save_fig("Interchannel_Regression", params)
 
-    if kwargs["save"]:
-        plt.savefig(os.path.join(kwargs["save_dir"],
-                                 "Interchannel_Regression.{0}".format(kwargs["extension"])),
-                    dpi=200.)
+
+def plot_delta_f(calcium, isosbestic, x, params):
+    if params["photometry_pp"]["plots_to_display"]["dFF"]:
+        delta_f = calcium - isosbestic
+        standardize = params["photometry_pp"]["standardize"]
+        multiplication_factor = 1 if standardize else 100
+        y_units = r"z-score $\Delta$F/F" if standardize else r"$\Delta$F/F"
+        fig_title = y_units
+
+        plt.figure(figsize=(10, 3), dpi=200.)
+        ax = plt.subplot(111)
+
+        ax.plot(x, delta_f, alpha=0.8, c="green", lw=params['lw'], label=y_units)
+        set_axis(ax, np.concatenate((isosbestic, calcium)), x, True, fig_title,
+                 True, multiplication_factor, y_units, params)
+
+    if kwargs["photometry_pp"]["multicursor"]:
+        multi = MultiCursor(fig.canvas, [ax0, ax1], color='r', lw=1, vertOn=[ax0, ax1])  # FIXME: unused
+    save_fig("Baseline_Determination", params)
+
+
+def plot_aligned_channels(x, isosbestic, calcium, params):  # FIXME: plot only. Rename
+    """
+    Function that performs the alignment of the fitted isosbestic and standardized (or not) calcium
+    signals and displays it in a plot.
+
+    :param np.array x: The time data in X
+    :param np.array isosbestic: The fitted isosbestic signal
+    :param np.array calcium: The standardized (or not) calcium signal
+    :param dict params: Dictionary with the parameters
+    """
+    standardize = params["photometry_pp"]["standardize"]
+    multiplication_factor = 1 if standardize else 100
+    y_units = "z-score" if standardize else "Change in signal (%)"
+    fig_title = "Alignement of Isosbestic and Calcium signals"
+    fig_name = 'Alignement'
+    line_width = params['lw']
+
+    if params["photometry_pp"]["plots_to_display"]["channel_alignement"]:
+        plt.figure(figsize=(10, 3), dpi=200.)
+        ax = plt.subplot(111)
+
+        ax.plot(x, calcium, alpha=0.8, c=params["photometry_pp"]["blue_laser"],
+                lw=line_width, zorder=0, label='calcium')
+        ax.plot(x, isosbestic, alpha=0.8, c=params["photometry_pp"]["purple_laser"],
+                lw=line_width, zorder=1, label='isosbestic')
+        set_axis(ax, np.concatenate((isosbestic, calcium)), x, True, fig_title,
+                 True, multiplication_factor, y_units, params)
+
+        save_fig(fig_name, params)

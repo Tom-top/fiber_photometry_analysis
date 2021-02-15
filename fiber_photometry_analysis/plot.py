@@ -59,7 +59,7 @@ def set_axis(ax, data, x, add_zero_line, fig_title, label_x, multiplication_fact
 
     if add_zero_line:
         add_line_at_zero(ax, x, line_width)
-    x_max = x[-1]
+    x_max = x.iloc[-1]
     xticks, xticklabels, unit = utils.generate_xticks_and_labels(x_max)
     ax.set_xticks(xticks)
     ax.set_xticklabels(xticklabels, fontsize=font_size)
@@ -95,11 +95,9 @@ def check_delta_f_with_behavior(bool_map, params, zorder=(0, 1), fig_name="dF_&_
     data = params["photometry_data"]["dFF"]["dFF"]
     x = params["photometry_data"]["dFF"]["x"]
     line_width = params['lw']
-    font_size = params['fsl']
-    standardize = params["photometry_pp"]["standardize"]
-    multiplication_factor = 1 if standardize else 100
+    multiplication_factor = 1 if params["photometry_pp"]["standardize"] else 100
+    fig_title = fig_name
 
-    labels = [params["behavior_to_segment"]]
     colors = ["red", "orange"]
     y_min, y_max, round_factor = utils.generate_yticks(data, 0.1)
     event_plot_args = {
@@ -111,46 +109,30 @@ def check_delta_f_with_behavior(bool_map, params, zorder=(0, 1), fig_name="dF_&_
     plt.figure(figsize=(10, 3), dpi=200.)
     ax = plt.subplot(111)
 
-    plot_handles = []
     if isinstance(bool_map, np.ndarray):
         raster_data_raw = behav_preproc.get_position_from_bool_map(bool_map, params["resolution_data"])
     elif isinstance(bool_map, list) and len(bool_map) == 2:
-        labels .append("{}".format(extra_legend_label))
         raster_data_raw = behav_preproc.get_position_from_bool_map(bool_map[0], params["resolution_data"])
         raster_data_processed = behav_preproc.get_position_from_bool_map(bool_map[1], params["resolution_data"])
 
-        b1, = ax.eventplot(raster_data_processed,
-                           color=colors[zorder[0]],
-                           zorder=zorder[0],
-                           **event_plot_args)
-        plot_handles[zorder[1]] = b1
+        ax.eventplot(raster_data_processed,
+                     color=colors[zorder[0]],
+                     zorder=zorder[0],
+                     label=extra_legend_label,
+                     **event_plot_args)
+    else:
+        raise NotImplementedError('bool_map must be a list of arrays or a numpy array. got {} instead'
+                                  .format(type(bool_map)))
 
-    b2, = ax.eventplot(raster_data_raw,
-                       color=colors[zorder[1]],
-                       zorder=zorder[1],
-                       **event_plot_args)
-    plot_handles[zorder[0]] = b2
+    ax.eventplot(raster_data_raw,
+                 color=colors[zorder[1]],
+                 zorder=zorder[1],
+                 label=params["behavior_to_segment"],
+                 **event_plot_args)
 
     ax.plot(x, data, zorder=2, color="green", lw=line_width)
 
-    add_line_at_zero(ax, x, line_width, color='blue')
-
-    x_max = x.iloc[-1]
-    xticks, xticklabels, unit = utils.generate_xticks_and_labels(x_max)
-    ax.set_xticks(xticks)
-    ax.set_xticklabels(xticklabels, fontsize=font_size)
-    ax.set_xlim(0, x_max)
-    if unit:
-        ax.set_xlabel("Time ({0})".format(unit), fontsize=font_size)
-
-    int_ticks = np.arange(y_min, y_max + round_factor, round_factor)
-    ax.set_yticks(int_ticks)
-    int_ticks *= multiplication_factor
-    ticks = ["{:.0f}".format(i) for i in int_ticks]
-    ax.set_yticklabels(ticks, fontsize=font_size)
-    ax.set_ylim(y_min, y_max)
-
-    ax.legend(handles=plot_handles, labels=labels, loc=2, fontsize=font_size)  # FIXME: change to use set_axis
+    set_axis(ax, data, x, True, fig_title, True, multiplication_factor, '', params)
 
     save_fig(fig_name, params)
 
@@ -452,8 +434,6 @@ def plot_delta_f(calcium, isosbestic, x, params):
         set_axis(ax, np.concatenate((isosbestic, calcium)), x, True, fig_title,
                  True, multiplication_factor, y_units, params)
 
-    if kwargs["photometry_pp"]["multicursor"]:
-        multi = MultiCursor(fig.canvas, [ax0, ax1], color='r', lw=1, vertOn=[ax0, ax1])  # FIXME: unused
     save_fig("Baseline_Determination", params)
 
 

@@ -43,9 +43,9 @@ def extract_raw_data(file_path, params):
     print("\nExtracting raw data for Isosbestic and Calcium recordings !")
     photometry_data = pd.read_feather(file_path)
     x = photometry_data["Time(s)"]
-    isosbestic = photometry_data["AIn-1 - Dem (AOut-{})".format(kwargs["isosbestic_channel"])]
-    calcium = photometry_data["AIn-1 - Dem (AOut-{})".format(kwargs["calcium_channel"])]
-    plot_data_pair(calcium, isosbestic, 'raw', kwargs, x, units='mV', to_kilo=True)
+    isosbestic = photometry_data["AIn-1 - Dem (AOut-{})".format(params["isosbestic_channel"])]
+    calcium = photometry_data["AIn-1 - Dem (AOut-{})".format(params["calcium_channel"])]
+    plot_data_pair(calcium, isosbestic, 'raw', params, x, units='mV', to_kilo=True)
 
     return x, isosbestic, calcium
 

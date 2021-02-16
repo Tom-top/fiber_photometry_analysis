@@ -14,7 +14,6 @@ import matplotlib.pyplot as plt
 import moviepy.editor as mpy
 import numpy as np
 
-import fiber_photometry_analysis.mask_operations
 from fiber_photometry_analysis import utilities as utils
 from fiber_photometry_analysis import photometry_io
 from fiber_photometry_analysis import generic_signal_processing as gen_preproc
@@ -25,7 +24,8 @@ from fiber_photometry_analysis import parameters
 from fiber_photometry_analysis import plot
 from fiber_photometry_analysis import video_plot as v_plot
 from fiber_photometry_analysis.behavior_preprocessing import set_ranges_high
-
+from fiber_photometry_analysis.logger import init_logging
+from fiber_photometry_analysis.logger import config as logger_config
 
 @dataclass
 class Coordinates:
@@ -40,6 +40,7 @@ experiment = "yymmdd"
 mouse = "test"
 base_directory = "/Users/tomtop/Documents/Github/Fiber_Photometry_Analysis"
 working_directory = os.path.join(base_directory, "{}/{}".format(experiment, mouse))
+init_logging(working_directory, experiment_name=experiment, config=logger_config)  # TODO put in main cfg
 
 files = utils.set_file_paths(working_directory, experiment, mouse)
 photometry_file_csv, video_file, behavior_automatic_file, behavior_manual_file, saving_directory = files

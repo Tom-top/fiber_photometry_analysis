@@ -7,7 +7,6 @@ Created on Fri Oct 23 14:41:56 2020
 """
 import logging
 
-from fiber_photometry_analysis import utilities as utils
 from fiber_photometry_analysis import photometry_io
 
 

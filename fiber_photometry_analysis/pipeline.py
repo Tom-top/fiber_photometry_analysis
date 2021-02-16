@@ -17,8 +17,8 @@ import numpy as np
 import fiber_photometry_analysis.mask_operations
 from fiber_photometry_analysis import utilities as utils
 from fiber_photometry_analysis import photometry_io
+from fiber_photometry_analysis import generic_signal_processing as gen_preproc
 from fiber_photometry_analysis import signal_preprocessing as preproc
-from fiber_photometry_analysis import generic_signal_preprocessing as gen_preproc
 from fiber_photometry_analysis import behavior_preprocessing as behav_preproc
 from fiber_photometry_analysis import mask_operations as mask_op
 from fiber_photometry_analysis import parameters
@@ -63,7 +63,7 @@ params["video_photometry"]["global_acceleration"] = 20
 # photometry_file_npy = io.convert_to_npy(photometry_file_csv, **params)
 photometry_data_test = photometry_io.save_dataframe_to_feather(photometry_file_csv, working_directory,
                                                                "photometry_{}_{}".format(experiment, mouse))
-photometry_data = preproc.load_photometry_data(photometry_data_test, **params)  # dict of different preprocessed data
+photometry_data = preproc.load_photometry_data(photometry_data_test, params)  # dict of different preprocessed data
 # FIXME: remove from metadata
 params["photometry_data"] = photometry_data  # Adds a new parameter containing all the photometry data
 
@@ -86,40 +86,40 @@ plot.check_delta_f_with_behavior(trimmed_bool_map, name="dF_&_behavioral_overlay
 
 merged_bool_map = mask_op.merge_neighboring_events(trimmed_bool_map, max_bout_gap)
 
-plot.check_delta_f_with_behavior([trimmed_bool_map, merged_bool_map], zorder=[0,1], name="dF_&_behavioral_overlay",
+plot.check_delta_f_with_behavior([trimmed_bool_map, merged_bool_map], zorder=[0, 1], name="dF_&_behavioral_overlay",
                                  extra_legend_label="Merged", **params)
 
 filtered_bool_map = mask_op.filter_small_events(merged_bool_map, minimal_bout_length)
 
-plot.check_delta_f_with_behavior([merged_bool_map, filtered_bool_map], zorder=[1,0], name="dF_&_behavioral_overlay",
+plot.check_delta_f_with_behavior([merged_bool_map, filtered_bool_map], zorder=[1, 0], name="dF_&_behavioral_overlay",
                                  extra_legend_label="Filtered out", **params)
 
-interpolated_x, interpolated_delta_f = gen_preproc.interpolate_signal(params["photometry_data"]["dFF"]["x"],
-                                                                      params["photometry_data"]["dFF"]["dFF"],
-                                                                      )
+new_sr = len(trimmed_bool_map)/params["resolution_data"]
+new_x = gen_preproc.generate_new_x(params["recording_sampling_rate"], new_sr)
+interpolated_delta_f = gen_preproc.interpolate_signal(params["photometry_data"]["dFF"]["x"],
+                                                      params["photometry_data"]["dFF"]["dFF"],
+                                                      new_x)
 
-start_points_bouts = mask_op.find_start_points_events(filtered_bool_map)
-
-x = params["photometry_data"]["dFF"]["x"]
-y = params["photometry_data"]["dFF"]["dFF"]
-from scipy.interpolate import interp1d
-spl = interp1d(x, y)
-sink = spl(np.arange(0, ))
-
-# Extract photometry data around major bouts of behavior
-delta_f_around_bouts = behav_preproc.extract_peri_event_photometry_data(position_major_bouts, **params)
+start_behavioral_bouts = mask_op.find_start_points_events(filtered_bool_map)
+length_behavioral_bouts = mask_op.get_length_events(filtered_bool_map, params["resolution_data"])
+delta_f_around_bouts = behav_preproc.extract_peri_event_photometry_data(interpolated_delta_f, new_sr,
+                                                                        start_behavioral_bouts, params)
 delta_f_around_bouts_ordered, length_bouts_ordered = behav_preproc.reorder_by_bout_size(delta_f_around_bouts,
-                                                                                        length_major_bouts)
-plot.peri_event_plot(delta_f_around_bouts_ordered, length_bouts_ordered, cmap="inferno", **params)  # cividis, viridis
-plot.peri_event_bar_plot(delta_f_around_bouts_ordered, **params)
+                                                                                        length_behavioral_bouts,
+                                                                                        rising=False)
 
+plot.peri_event_plot(delta_f_around_bouts_ordered,
+                     length_bouts_ordered,
+                     new_sr,
+                     cmap="inferno", # cividis, viridis, inferno
+                     style="average", # individual, average
+                     individual_colors=False,
+                     **params)
 
+plot.peri_event_bar_plot(delta_f_around_bouts_ordered, int(new_sr), duration_pre=3,
+                         duration_post=3, **params)
 
-
-
-
-
-# Creates a video with aligned photometry and behavior
+# [OPTIONAL] Creates a video with aligned photometry and behavior
 behavior_data_x = behav_preproc.create_bool_map(position_major_bouts,
                                                 params["video_duration"],
                                                 1 / params["recording_sampling_rate"])

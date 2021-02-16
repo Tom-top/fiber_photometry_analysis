@@ -42,9 +42,9 @@ def extract_raw_data(file_path, params):
     print("\nExtracting raw data for Isosbestic and Calcium recordings !")
     photometry_data = pd.read_feather(file_path)
     x = photometry_data["Time(s)"]
-    isosbestic = photometry_data["AIn-1 - Dem (AOut-{})".format(kwargs["isosbestic_channel"])]
-    calcium = photometry_data["AIn-1 - Dem (AOut-{})".format(kwargs["calcium_channel"])]
-    plot_data_pair(calcium, isosbestic, 'raw', kwargs, x, units='mV', to_kilo=True)
+    isosbestic = photometry_data["AIn-1 - Dem (AOut-{})".format(params["isosbestic_channel"])]
+    calcium = photometry_data["AIn-1 - Dem (AOut-{})".format(params["calcium_channel"])]
+    plot_data_pair(calcium, isosbestic, 'raw', params, x, units='mV', to_kilo=True)
 
     return x, isosbestic, calcium
 
@@ -337,7 +337,7 @@ def load_photometry_data(photometry_data_file_path, params):
                                                                                                             isosbestic_smoothed,
                                                                                                             calcium_smoothed,
                                                                                                             params)
-    plot_cropped_data(calcium, function_calcium, isosbestic, function_isosbestic, params, x2)
+    plot_cropped_data(calcium_cropped, function_calcium, isosbestic_cropped, function_isosbestic, params, x2)
     
     isosbestic_corrected, calcium_corrected = baseline_correction(isosbestic_cropped, calcium_cropped,
                                                                   function_isosbestic, function_calcium)
@@ -353,9 +353,9 @@ def load_photometry_data(photometry_data_file_path, params):
                                                 regression_type=params["photometry_pp"]["regression"])
     plot_ca_iso_regression(isosbestic_standardized, calcium_standardized, isosbestic_fitted, params)
         
-    align_channels(x2, isosbestic_fitted, calcium_standardized, **params)
+    align_channels(x2, isosbestic_fitted, calcium_standardized, params)
     
-    delta_f = compute_delta_f(x2, isosbestic_fitted, calcium_standardized, **params)
+    delta_f = compute_delta_f(x2, isosbestic_fitted, calcium_standardized, params)
     
     sampling_rate = params["recording_sampling_rate"]
     time_lost = (len(x0) - len(x2))/sampling_rate
@@ -373,11 +373,11 @@ def load_photometry_data(photometry_data_file_path, params):
                     "calcium_cropped": isosbestic_cropped,
                     "calcium_cropped": isosbestic_corrected,
                     "calcium_standardized": isosbestic_standardized,
-                    "dF": dF,
+                    "dF": delta_f,
                     })
 
     df = io.reset_dataframe_index(df)
-    df.to_feather(os.path.join(kwargs["save_dir"], "photometry_data.feather"))
+    df.to_feather(os.path.join(params["save_dir"], "photometry_data.feather"))
         
     data = {
         "raw": {

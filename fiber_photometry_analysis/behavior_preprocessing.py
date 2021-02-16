@@ -290,7 +290,7 @@ def detect_major_bouts(position_bouts, min_bout_length):
     return long_bout_ranges, long_bout_durations, short_bout_ranges, short_bout_durations
 
 
-def extract_peri_event_photometry_data(position_bouts, **params):
+def extract_peri_event_photometry_data(interpolated_signal, interpolated_signal_sampling_rate, start_bouts, params):
     """
     Algorithm that extracts the photometry data at the moment when the animal behaves.
     
@@ -299,20 +299,17 @@ def extract_peri_event_photometry_data(position_bouts, **params):
     :return: df_around_peaks (list) = list of photometry data at the moment when the animal behaves
     """
     df_around_peaks = []
-    sample_rate = params["recording_sampling_rate"]
-    n_pnts_pre = params["peri_event"]["graph_distance_pre"] * sample_rate
-    n_pnts_post = (params["peri_event"]["graph_distance_post"] * sample_rate) + 1  # Add 1 pnt
-    delta_f = params["photometry_data"]["dFF"]["dFF"]
-    for bout in position_bouts:
-        event_start = bout[0] * sample_rate
-        start_idx = int(event_start - n_pnts_pre)
-        end_idx = int(event_start + n_pnts_post)
-        df_around_peaks.append(delta_f[start_idx:end_idx])
-
+    n_pnts_pre = (params["peri_event"]["graph_distance_pre"] + 0.5) * interpolated_signal_sampling_rate
+    n_pnts_post = (params["peri_event"]["graph_distance_post"] + 0.5) * interpolated_signal_sampling_rate
+    for s in start_bouts:
+        bout_start = (s/params["resolution_data"]) * interpolated_signal_sampling_rate
+        start_idx = int(bout_start - n_pnts_pre)
+        end_idx = int(bout_start + n_pnts_post)
+        df_around_peaks.append(interpolated_signal[start_idx:end_idx])
     return df_around_peaks
 
 
-def reorder_by_bout_size(delta_f_around_peaks, length_bouts):
+def reorder_by_bout_size(delta_f_around_peaks, length_bouts, rising=False):
     """
     Simple algorithm that re-orders the peri-event photometry data based on the size of the behavioral event.
 
@@ -321,7 +318,10 @@ def reorder_by_bout_size(delta_f_around_peaks, length_bouts):
     :return: dd_around_peaks_ordered (list) = list of ordered photometry data at the moment when the animal behaves
              length_bouts_ordered (list) = list of the length of each behavioral bout
     """
-    order = np.argsort( -np.array(length_bouts))
+    if rising:
+        order = np.argsort(np.array(length_bouts))
+    else:
+        order = np.argsort(-np.array(length_bouts))
     
     dd_around_peaks_ordered = np.array(delta_f_around_peaks)[order]
     length_bouts_ordered = np.array(length_bouts)[order]

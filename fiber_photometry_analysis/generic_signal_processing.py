@@ -122,6 +122,14 @@ def crop_signal(signal, sampling_rate, crop_start=0, crop_end=None):
 
     return signal if crop_start == 0 and crop_end == 0 else signal[crop_start:crop_end]
 
-def interpolate_signal(signal_x, signal_y, new_x)
-    spl = interp1d(time_video, signal_y)
-    sink = spl(time_final)
+def round_to_closest_ten(x):
+    return int(round(x / 10.0)) * 10
+
+def generate_new_x(sampling_rate, duration):
+    new_sampling_rate = 1/round_to_closest_ten(sampling_rate)
+    return np.arange(0, duration-1, new_sampling_rate)
+
+def interpolate_signal(signal_x, signal_y, new_x):
+    spl = interp1d(signal_x, signal_y)
+    sink = spl(new_x)
+    return sink

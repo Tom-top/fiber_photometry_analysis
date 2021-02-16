@@ -180,8 +180,8 @@ def standardization(isosbestic, calcium, standardise):
         isosbestic_standardized = (isosbestic - np.median(isosbestic)) / np.std(isosbestic)  # standardization correction for isosbestic
         calcium_standardized = (calcium - np.median(calcium)) / np.std(calcium)  # standardization for calcium
     else:
-        utils.print_in_color("\nThe standardization step in skipped."
-                             " Parameter plot_args['photometry_pp']['standardize'] == False", "RED")
+        logging.error("\nThe standardization step in skipped."
+                      " Parameter plot_args['photometry_pp']['standardize'] == False")
         isosbestic_standardized = isosbestic  # standardization skipped
         calcium_standardized = calcium  # standardization skipped
         

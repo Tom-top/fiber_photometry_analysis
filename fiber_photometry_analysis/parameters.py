@@ -5,8 +5,8 @@ Created on Fri Oct 23 14:41:56 2020
 
 @author: thomas.topilko
 """
+import logging
 
-from fiber_photometry_analysis import utilities as utils
 from fiber_photometry_analysis import photometry_io
 
 
@@ -93,13 +93,12 @@ def set_parameters(files, allow_downsampling=True):
     
     args = {**general_args, **behavioral_segmentation_args, **plot_args}
     
-    utils.print_in_color("\nParameters loaded successfully\n", "GREEN")
-    
-    utils.print_in_color(
+    logging.info("\nParameters loaded successfully\n")
+
+    logging.info(
         """If you like to change some of the parameters you can directly modify them in
         the 'parameters.py' file or change them by calling : 'args['arg'] = new_value' with
         arg corresponding to the argument you desire to hange, and new_value the new value
-        of the argument in question""", 'GREEN'
-    )
+        of the argument in question""")
     
     return args

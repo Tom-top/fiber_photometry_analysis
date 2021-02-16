@@ -5,7 +5,7 @@ Created on Tue Oct 20 13:35:52 2020
 
 @author: thomas.topilko
 """
-
+import logging
 import os
 from dataclasses import dataclass
 
@@ -14,7 +14,6 @@ import matplotlib.pyplot as plt
 import moviepy.editor as mpy
 import numpy as np
 
-import fiber_photometry_analysis.mask_operations
 from fiber_photometry_analysis import utilities as utils
 from fiber_photometry_analysis import photometry_io
 from fiber_photometry_analysis import generic_signal_processing as gen_preproc
@@ -25,7 +24,8 @@ from fiber_photometry_analysis import parameters
 from fiber_photometry_analysis import plot
 from fiber_photometry_analysis import video_plot as v_plot
 from fiber_photometry_analysis.behavior_preprocessing import set_ranges_high
-
+from fiber_photometry_analysis.logger import init_logging
+from fiber_photometry_analysis.logger import config as logger_config
 
 @dataclass
 class Coordinates:
@@ -40,6 +40,7 @@ experiment = "210121"
 mouse = "207_0020"
 base_directory = "/Users/tomtop/Documents/Github/Fiber_Photometry_Analysis"
 working_directory = os.path.join(base_directory, "{}/{}".format(experiment, mouse))
+init_logging(working_directory, experiment_name=experiment, config=logger_config)  # TODO put in main cfg
 
 files = utils.set_file_paths(working_directory, experiment, mouse)
 photometry_file_csv, video_file, behavior_automatic_file, behavior_manual_file, saving_directory = files
@@ -127,7 +128,7 @@ plot.peri_event_bar_plot(delta_f_around_bouts_ordered, new_sr, params, duration_
 behavior_data_x = behav_preproc.create_bool_map(position_major_bouts,
                                                 params["video_duration"],
                                                 1 / params["recording_sampling_rate"])
-utils.print_in_color("\nBehavioral data extracted. Behavior = {0}".format(params["behavior_to_segment"]), "GREEN")
+logging.info("\nBehavioral data extracted. Behavior = {}".format(params["behavior_to_segment"]))
 i = int(round((params["video_duration"] - int(params["photometry_data"]["time_lost"])) * params["recording_sampling_rate"]))  # FIXME: simplify
 behavior_data_x_trimmed = behavior_data_x[0: i]
 

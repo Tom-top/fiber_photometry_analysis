@@ -5,7 +5,7 @@ Created on Mon Oct 19 10:02:35 2020
 
 @author: thomas.topilko
 """
-
+import logging
 import os
 import math
 
@@ -14,25 +14,32 @@ import numpy as np
 from fiber_photometry_analysis.exceptions import FiberPhotometryTypeError
 
 colors = {
-    "GREEN": '\33[32m',
+    "WHITE": '\033[1;37m',
+    "GREEN": '\033[0;32m',
     "YELLOW": '\033[1;33;48m',
     "RED": '\033[1;31;48m',
     "BLINK": '\33[5m',
     "BLINK2": '\33[6m',
-    "END": '\033[1;37;0m'
+    "RESET": '\033[1;37;0m'
 }
 
 
-def print_in_color(message, color):  # TODO: call when logging.note and red when error...
-    """Function that receives a string as an argument
-    and prints the message in color
-    
-    Args :      message (str) = Message to be printed
-    
-    Returns :   color (str) = The color of the message to be printed (colors)
-    """
+def colorize(msg, color):
+    color = color.upper()
     color = colors[color]
-    print("{0}{1}{2}".format(color, message, colors["END"]))
+    return "{color}{msg}{reset_color}".format(color=color, msg=msg, reset_color=colors["RESET"])
+
+
+def print_in_color(message, color):  # TODO: call when logging.note and red when error...
+    """
+    Function that receives a string as an argument
+    and prints the message in color
+
+    :param str message: Message to be printed
+    :param str color: The color of the message to be printed. One of
+    ("GREEN", "YELLOW", "RED", "BLINK", "BLINK2" "RESET")
+    """
+    print(colorize(message, color))
 
 
 def safe_int(val):
@@ -87,10 +94,10 @@ def check_if_path_exists(path):
     """
     
     if not os.path.exists(path):
-        print_in_color("[WARNING] {0} does not exist!".format(path), "RED")
+        logging.warning('{} does not exist!'.format(path))
         return False
     else:
-        print_in_color("{0} was correctly detected".format(path), "GREEN")
+        logging.info("{} was correctly detected".format(path))
         return True
 
 

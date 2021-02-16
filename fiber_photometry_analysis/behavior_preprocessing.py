@@ -5,7 +5,7 @@ Created on Fri Oct 23 16:16:29 2020
 
 @author: thomas.topilko
 """
-
+import logging
 from decimal import Decimal
 
 import numpy as np
@@ -80,7 +80,7 @@ def estimate_behavior_time_resolution(starts, ends):
         else:
             res = min_step - remaining
 
-    utils.print_in_color("The resolution for the behavioral is {}s".format(res), "GREEN")
+    logging.info("The resolution for the behavioral is {}s".format(res))
     
     return 1/res
 

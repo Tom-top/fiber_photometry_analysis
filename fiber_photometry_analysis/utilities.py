@@ -5,7 +5,7 @@ Created on Mon Oct 19 10:02:35 2020
 
 @author: thomas.topilko
 """
-
+import logging
 import os
 import math
 
@@ -94,10 +94,10 @@ def check_if_path_exists(path):
     """
     
     if not os.path.exists(path):
-        print_in_color("[WARNING] {0} does not exist!".format(path), "RED")
+        logging.warning('{} does not exist!'.format(path))
         return False
     else:
-        print_in_color("{0} was correctly detected".format(path), "GREEN")
+        logging.info("{} was correctly detected".format(path))
         return True
 
 

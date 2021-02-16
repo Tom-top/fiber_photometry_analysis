@@ -5,7 +5,7 @@ Created on Tue Oct 20 13:35:52 2020
 
 @author: thomas.topilko
 """
-
+import logging
 import os
 from dataclasses import dataclass
 
@@ -116,7 +116,7 @@ plot.peri_event_bar_plot(delta_f_around_bouts_ordered, **params)
 behavior_data_x = behav_preproc.create_bool_map(position_major_bouts,
                                                 params["video_duration"],
                                                 1 / params["recording_sampling_rate"])
-utils.print_in_color("\nBehavioral data extracted. Behavior = {0}".format(params["behavior_to_segment"]), "GREEN")
+logging.info("\nBehavioral data extracted. Behavior = {}".format(params["behavior_to_segment"]))
 i = int(round((params["video_duration"] - int(params["photometry_data"]["time_lost"])) * params["recording_sampling_rate"]))  # FIXME: simplify
 behavior_data_x_trimmed = behavior_data_x[0: i]
 

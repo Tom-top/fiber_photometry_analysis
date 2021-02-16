@@ -5,7 +5,7 @@ Created on Mon Oct 26 13:19:37 2020
 
 @author: thomas.topilko
 """
-
+import logging
 import os
 
 import numpy as np
@@ -341,8 +341,7 @@ def peri_event_bar_plot(data_around_major_bouts, **params):
     ax0.plot((1, 1), (y_max+y_max*0.05, y_max+y_max*0.1), lw=1, color="black")
     ax0.plot((0, 1), (y_max+y_max*0.1, y_max+y_max*0.1), lw=1, color="black")
     
-    utils.print_in_color("The comparison of AUC for before and after the behavioral initiation is : {0}"
-                         .format(pval), "GREEN")
+    logging.info("The comparison of AUC for before and after the behavioral initiation is : {}".format(pval))
 
     if 0.01 < pval <= 0.05:
         stars = '*'

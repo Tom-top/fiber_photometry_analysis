@@ -5,7 +5,7 @@ Created on Mon Oct 19 13:15:03 2020
 
 @author: thomas.topilko
 """
-
+import logging
 import os
 
 import pandas as pd
@@ -23,10 +23,12 @@ def validate_path(file_path):
     if not os.path.exists(file_path):
         raise FiberFotometryIoFileNotFoundError(file_path)
 
+
 def convert_photometry_data_to_dataframe(file_path):
     photometry_data = pd.read_csv(file_path, header=1, usecols=np.arange(0, 3))
     filtered_data = photometry_data.dropna(thresh=1)
     return filtered_data
+
 
 def save_dataframe_to_feather(source_file_path, saving_path, name, overwrite=False):
     saving_file_path = os.path.join(saving_path, name+".feather")
@@ -38,6 +40,7 @@ def save_dataframe_to_feather(source_file_path, saving_path, name, overwrite=Fal
             df = convert_photometry_data_to_dataframe(source_file_path)
             df.to_feather(saving_file_path)
     return saving_file_path
+
 
 def deprecated_convert_to_npy(file_path, **kwargs):  # FIXME: replace by save to dataframe binary
     """Function that takes a csv file as an input, extract useful data from it
@@ -54,7 +57,7 @@ def deprecated_convert_to_npy(file_path, **kwargs):  # FIXME: replace by save to
     if os.path.exists(npy_file_path):
         os.remove(npy_file_path)
         
-    print("Converting CSV photometry data into NPY")
+    logging.info("Converting CSV photometry data into NPY")
 
     photometry_sheet = pd.read_csv(file_path, header=1, usecols=np.arange(0, 3))  # Load the data
     
@@ -92,9 +95,10 @@ def deprecated_convert_to_npy(file_path, **kwargs):  # FIXME: replace by save to
     
     np.save(npy_file_path, sink)  # Save the data as numpy file
     
-    print("Filetered : {0} points".format(len(photometry_sheet) - len(filtered_photometry_sheet)))
+    logging.info("Filetered : {0} points".format(len(photometry_sheet) - len(filtered_photometry_sheet)))
 
     return npy_file_path
+
 
 def doric_csv_to_dataframe(file, **args):
     photometry_sheet = pd.read_csv(file, header=1, usecols=np.arange(0, 3))  # Load the data
@@ -106,11 +110,12 @@ def doric_csv_to_dataframe(file, **args):
     
     filtered_photometry_sheet = photometry_sheet[non_nan_mask]  # Filter the data
     
-    seconds_remaining = len(filtered_photometry_sheet) % kwargs["recording_sampling_rate"]
-    photometry_data_cropped = photometry_data_npy[:int(len(filtered_photometry_sheet) - seconds_ramaining)]
+    seconds_remaining = len(filtered_photometry_sheet) % args["recording_sampling_rate"]
+    photometry_data_cropped = photometry_data_npy[:int(len(filtered_photometry_sheet) - seconds_remaining)]
     photometry_data_transposed = np.transpose(photometry_data_cropped)  # Transpose data
     
     return photometry_data_transposed
+
 
 def convert_to_feather(file, recompute=True, **kwargs):
     
@@ -120,6 +125,7 @@ def convert_to_feather(file, recompute=True, **kwargs):
             pass
     else:
         pass
+
 
 def get_recording_duration_and_sampling_rate(file_path, allow_downsampling=True):
     """Function that takes a csv file as an input, extract the time data from it,
@@ -141,8 +147,7 @@ def get_recording_duration_and_sampling_rate(file_path, allow_downsampling=True)
 
     factor = None
     if sr >= 250:
-        print("\n")
-        utils.print_in_color("The sampling rate of the recording is pretty high : {0}. "
+        utils.print_in_color("\nThe sampling rate of the recording is pretty high : {0}. "
                              "We suggest to downsample the data using the pp.down_sample_signal function (250Hz)"
                              .format(sr), "RED")
 
@@ -165,6 +170,7 @@ def get_video_duration_and_framerate(file_path):
     fps = video_clip.fps
     
     return duration, fps
+
 
 def reset_dataframe_index(df):
     length = len(df)

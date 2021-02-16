@@ -93,9 +93,7 @@ def set_parameters(files, allow_downsampling=True):
     
     args = {**general_args, **behavioral_segmentation_args, **plot_args}
     
-    print("\n")
-    utils.print_in_color("Parameters loaded successfully", "GREEN")
-    print("\n")
+    utils.print_in_color("\nParameters loaded successfully\n", "GREEN")
     
     utils.print_in_color(
         """If you like to change some of the parameters you can directly modify them in

@@ -81,18 +81,17 @@ trimmed_bool_map = behav_preproc.trim_behavioral_data(bool_map,
                                                       params["crop_end"],
                                                       params["resolution_data"])
 
-plot.check_delta_f_with_behavior(trimmed_bool_map, name="dF_&_behavioral_overlay",
-                                 extra_legend_label="Merged", **params)
+plot.check_delta_f_with_behavior(trimmed_bool_map, params, extra_legend_label="Merged")
 
 merged_bool_map = mask_op.merge_neighboring_events(trimmed_bool_map, max_bout_gap)
 
 plot.check_delta_f_with_behavior([trimmed_bool_map, merged_bool_map], zorder=[0, 1], name="dF_&_behavioral_overlay",
-                                 extra_legend_label="Merged", **params)
+                                 extra_legend_label="Merged")
 
 filtered_bool_map = mask_op.filter_small_events(merged_bool_map, minimal_bout_length)
 
 plot.check_delta_f_with_behavior([merged_bool_map, filtered_bool_map], zorder=[1, 0], name="dF_&_behavioral_overlay",
-                                 extra_legend_label="Filtered out", **params)
+                                 extra_legend_label="Filtered out")
 
 new_sr = len(trimmed_bool_map)/params["resolution_data"]
 new_x = gen_preproc.generate_new_x(params["recording_sampling_rate"], new_sr)
@@ -107,7 +106,6 @@ delta_f_around_bouts = behav_preproc.extract_peri_event_photometry_data(interpol
 delta_f_around_bouts_ordered, length_bouts_ordered = behav_preproc.reorder_by_bout_size(delta_f_around_bouts,
                                                                                         length_behavioral_bouts,
                                                                                         rising=False)
-
 plot.peri_event_plot(delta_f_around_bouts_ordered,
                      length_bouts_ordered,
                      new_sr,
@@ -115,7 +113,6 @@ plot.peri_event_plot(delta_f_around_bouts_ordered,
                      style="average", # individual, average
                      individual_colors=False,
                      **params)
-
 plot.peri_event_bar_plot(delta_f_around_bouts_ordered, int(new_sr), duration_pre=3,
                          duration_post=3, **params)
 

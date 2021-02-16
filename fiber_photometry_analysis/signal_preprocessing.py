@@ -45,7 +45,7 @@ def extract_raw_data(file_path, params):
     x = photometry_data["Time(s)"]
     isosbestic = photometry_data["AIn-1 - Dem (AOut-{})".format(params["isosbestic_channel"])]
     calcium = photometry_data["AIn-1 - Dem (AOut-{})".format(params["calcium_channel"])]
-    plot_data_pair(calcium, isosbestic, 'raw', params, x, units='mV', to_kilo=True)
+    plot_data_pair(calcium, isosbestic, x, 'raw', params, units='mV', to_milli=True)
 
     return x, isosbestic, calcium
 
@@ -251,7 +251,7 @@ def load_photometry_data(photometry_data_file_path, params):
                                                                                                             isosbestic_smoothed,
                                                                                                             calcium_smoothed,
                                                                                                             params)
-    plot_cropped_data(calcium_cropped, function_calcium, isosbestic_cropped, function_isosbestic, params, x2)
+    plot_cropped_data(calcium_cropped, function_calcium, isosbestic_cropped, function_isosbestic, x2, params)
     
     isosbestic_corrected, calcium_corrected = baseline_correction(isosbestic_cropped, calcium_cropped,
                                                                   function_isosbestic, function_calcium)
@@ -269,7 +269,7 @@ def load_photometry_data(photometry_data_file_path, params):
         
     plot_aligned_channels(x2, isosbestic_fitted, calcium_standardized, params)
     
-    delta_f = compute_delta_f(x2, isosbestic_fitted, calcium_standardized, params)
+    delta_f = compute_delta_f(isosbestic_fitted, calcium_standardized)
     plot_delta_f(calcium_standardized, isosbestic_fitted, x2, params)
     
     sampling_rate = params["recording_sampling_rate"]

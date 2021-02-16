@@ -76,7 +76,6 @@ def get_up_times_bool_map(bool_map):
     ones_pos = np.concatenate(([0], np.equal(bool_map, 1).view(np.int8), [0]))
     absolute_diff = np.abs(np.diff(ones_pos))
     uptimes = np.where(absolute_diff == 1)[0].reshape(-1, 2)
-    print(uptimes)
     return uptimes
 
 
@@ -109,6 +108,9 @@ def filter_small_events(bool_map, event_size):
     for s, e in uptimes[small_uptimes_pos]: # OPTIMISE: numpy
         filtered_bool_map[s:e] = 0
     return filtered_bool_map
+
+def filter_edge_events(bool_map, res):
+    start_points = find_start_points_events(bool_map)
 
 def find_start_points_events(bool_map):
     ones_pos = np.concatenate(([0], np.equal(bool_map, 1).view(np.int8), [0]))

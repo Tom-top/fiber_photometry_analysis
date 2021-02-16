@@ -18,8 +18,8 @@ def set_parameters(files, allow_downsampling=True):
     recording_duration, recording_sampling_rate, downsampling_factor = sampling_info  # Get metadata from the photometry file
     
     general_args = {
-        "isosbestic_channel" : 1,
-        "calcium_channel" : 2,
+        "isosbestic_channel" : 2,
+        "calcium_channel" : 1,
         "recording_sampling_rate": recording_sampling_rate,  # Sampling rate of the photometry system
         "recording_duration": recording_duration,  # The time of recording according to the photometry dataset (s)
         "smoothing_window": int(recording_sampling_rate),  # The window used to smooth the raw signal

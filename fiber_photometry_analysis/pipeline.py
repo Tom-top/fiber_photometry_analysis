@@ -36,8 +36,8 @@ class Coordinates:
 
 
 # Setting the working directory and the related files
-experiment = "yymmdd"
-mouse = "test"
+experiment = "210121"
+mouse = "207_0020"
 base_directory = "/Users/tomtop/Documents/Github/Fiber_Photometry_Analysis"
 working_directory = os.path.join(base_directory, "{}/{}".format(experiment, mouse))
 
@@ -46,7 +46,7 @@ photometry_file_csv, video_file, behavior_automatic_file, behavior_manual_file, 
 
 params = parameters.set_parameters(files, allow_downsampling=True)
 cage_coordinates = Coordinates(x1=80, y1=62, x2=844, y2=402)
-params["behavior_to_segment"] = "Behavior1"
+params["behavior_to_segment"] = "Nesting"
 max_bout_gap = 4  # TODO: inline
 minimal_bout_length = 2  # TODO: inline
 params["peak_merging_distance"] = max_bout_gap  # TODO remove
@@ -85,16 +85,22 @@ plot.check_delta_f_with_behavior(trimmed_bool_map, params, extra_legend_label="M
 
 merged_bool_map = mask_op.merge_neighboring_events(trimmed_bool_map, max_bout_gap)
 
-plot.check_delta_f_with_behavior([trimmed_bool_map, merged_bool_map], zorder=[0, 1], name="dF_&_behavioral_overlay",
+plot.check_delta_f_with_behavior([trimmed_bool_map, merged_bool_map], params, zorder=[0, 1],
                                  extra_legend_label="Merged")
 
-filtered_bool_map = mask_op.filter_small_events(merged_bool_map, minimal_bout_length)
+large_events_bool_map = mask_op.filter_small_events(merged_bool_map, minimal_bout_length)
 
-plot.check_delta_f_with_behavior([merged_bool_map, filtered_bool_map], zorder=[1, 0], name="dF_&_behavioral_overlay",
-                                 extra_legend_label="Filtered out")
+plot.check_delta_f_with_behavior([merged_bool_map, large_events_bool_map], params, zorder=[1, 0],
+                                 extra_legend_label="Large bouts")
 
-new_sr = len(trimmed_bool_map)/params["resolution_data"]
-new_x = gen_preproc.generate_new_x(params["recording_sampling_rate"], new_sr)
+filtered_bool_map = mask_op.filter_edge_events(large_events_bool_map, params)
+
+plot.check_delta_f_with_behavior([large_events_bool_map, filtered_bool_map], params, zorder=[1, 0],
+                                 extra_legend_label="Filtered edge events")
+
+trimmed_duration = len(trimmed_bool_map)/params["resolution_data"]
+new_sr = gen_preproc.round_to_closest_ten(params["recording_sampling_rate"])
+new_x = gen_preproc.generate_new_x(new_sr, trimmed_duration)
 interpolated_delta_f = gen_preproc.interpolate_signal(params["photometry_data"]["dFF"]["x"],
                                                       params["photometry_data"]["dFF"]["dFF"],
                                                       new_x)
@@ -109,12 +115,13 @@ delta_f_around_bouts_ordered, length_bouts_ordered = behav_preproc.reorder_by_bo
 plot.peri_event_plot(delta_f_around_bouts_ordered,
                      length_bouts_ordered,
                      new_sr,
+                     params,
                      cmap="inferno", # cividis, viridis, inferno
                      style="average", # individual, average
                      individual_colors=False,
-                     **params)
-plot.peri_event_bar_plot(delta_f_around_bouts_ordered, int(new_sr), duration_pre=3,
-                         duration_post=3, **params)
+                     )
+plot.peri_event_bar_plot(delta_f_around_bouts_ordered, new_sr, params, duration_pre=3,
+                         duration_post=3)
 
 # [OPTIONAL] Creates a video with aligned photometry and behavior
 behavior_data_x = behav_preproc.create_bool_map(position_major_bouts,

@@ -126,8 +126,7 @@ def round_to_closest_ten(x):
     return int(round(x / 10.0)) * 10
 
 def generate_new_x(sampling_rate, duration):
-    new_sampling_rate = 1/round_to_closest_ten(sampling_rate)
-    return np.arange(0, duration-1, new_sampling_rate)
+    return np.arange(0, duration-1, 1/sampling_rate)
 
 def interpolate_signal(signal_x, signal_y, new_x):
     spl = interp1d(signal_x, signal_y)

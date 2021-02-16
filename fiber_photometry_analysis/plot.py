@@ -135,14 +135,16 @@ def check_delta_f_with_behavior(bool_map, params, zorder=(0, 1), fig_name="dF_&_
                  **event_plot_args)
 
     ax.plot(x, data, zorder=2, color="green", lw=line_width)
+    ax0.plot([0, x_delta_f.iloc[-1]],
+             [0]*2,
 
     set_axis(ax, data, x, True, fig_title, True, multiplication_factor, '', params)
 
     save_fig(fig_name, params)
 
 
-def peri_event_plot(data_around_major_bouts, length_major_bouts, cmap="inferno", **params):
-    """
+def peri_event_plot(data_around_major_bouts, length_major_bouts, interpolated_sampling_rate,
+                    style="individual", individual_colors=False, cmap="inferno", **kwargs):
     Function that plots the peri-event photometry data in two different formats.
     First a line plot showing the average signal before and after initiation of the behavior,
     Second a heatmap showing each individual signal traces before and after initiation of the behavior.
@@ -168,9 +170,9 @@ def peri_event_plot(data_around_major_bouts, length_major_bouts, cmap="inferno",
     x_range = np.linspace(0, len(mean_data_around_bouts), len(mean_data_around_bouts))
     ax0.plot(x_range, mean_data_around_bouts, color="green", alpha=1., lw=params["lw"] + 1, zorder=1)  # Plots the average signal
     
-    if params["peri_event"]["style"] == "individual":  # If individual traces are to be displayed in the line plot
+    if style == "individual":  # If individual traces are to be displayed in the line plot
         for l in data_around_major_bouts:
-            if params["peri_event"]["individual_color"]:
+            if individual_colors:
                 ax0.plot(l, alpha=0.5, lw=params["lw"], zorder=0)  # Plots individual traces
             else:
                 ax0.plot(l, color="gray", alpha=0.5, lw=params["lw"], zorder=0)  # Plots individual traces
@@ -187,6 +189,7 @@ def peri_event_plot(data_around_major_bouts, length_major_bouts, cmap="inferno",
         
         y_min, y_max, round_factor = utils.generate_yticks(data_around_major_bouts.flatten(), 0.2)
     elif params["peri_event"]["style"] == "average":
+    elif style == "average":
         ax0.plot(x_range, mean_data_around_bouts + std_data_around_bouts,
                  color="green", alpha=0.3, lw=params["lw"])
         ax0.plot(x_range, mean_data_around_bouts - std_data_around_bouts,
@@ -205,8 +208,8 @@ def peri_event_plot(data_around_major_bouts, length_major_bouts, cmap="inferno",
     ax0.set_ylim(y_min, y_max)
     
     # Creates a gray square on the line plot that represents the average length of a behavioral bout
-    patch = patches.Rectangle(((params["peri_event"]["graph_distance_pre"] + 0.5) * params["recording_sampling_rate"],
-                               - y_range * 0.1),
+    patch = patches.Rectangle(((kwargs["peri_event"]["graph_distance_pre"]+0.5)*interpolated_sampling_rate, - y_range*0.1),
+                              width=np.mean(length_major_bouts)*interpolated_sampling_rate,
                               width=np.mean(length_major_bouts) * params["recording_sampling_rate"],
                               height=y_range*0.1,
                               color="gray",
@@ -215,11 +218,11 @@ def peri_event_plot(data_around_major_bouts, length_major_bouts, cmap="inferno",
     
     ax0.add_patch(patch)  # Adds the patch to the plot
     ax0.plot((0, len(mean_data_around_bouts)), (0, 0), "--", color="black", lw=params["lw"])  # Creates a horizontal dashed line at y = 0 to signal the baseline
-    vline = ax0.axvline(x=(params["peri_event"]["graph_distance_pre"] + 0.5) * params["recording_sampling_rate"],
+    vline = ax0.axvline(x=(kwargs["peri_event"]["graph_distance_pre"]+0.5) * interpolated_sampling_rate,
                         color='red', linestyle='--', lw=params["lw"])  # Creates a vertical dashed line at x = 0 to signal the begining of the behavioral bout
-    
-    ax0.set_xticks(np.linspace(0, ((params["peri_event"]["graph_distance_pre"] + params["peri_event"]["graph_distance_post"] + 1) * params["recording_sampling_rate"]), 5)) #Generates ticks for the x axis
-    ax0.set_xticklabels(np.linspace(-params["peri_event"]["graph_distance_pre"], params["peri_event"]["graph_distance_post"], 5), fontsize=params["fsl"])  # Generates labels for the x axis
+
+    print(np.linspace(0, ((kwargs["peri_event"]["graph_distance_pre"] + kwargs["peri_event"]["graph_distance_post"]) * interpolated_sampling_rate), 5))
+    ax0.set_xticks(np.linspace(0, ((kwargs["peri_event"]["graph_distance_pre"] + kwargs["peri_event"]["graph_distance_post"] + 1) * interpolated_sampling_rate), 5)) #Generates ticks for the x axis
     ax0.set_xlim(0, len(mean_data_around_bouts))  # Sets the limits for the x axis
 #    ax0.set_xlabel("Time (s)", fontsize=kwargs["fsl"]) #Displays the label for the x axis
 
@@ -239,10 +242,10 @@ def peri_event_plot(data_around_major_bouts, length_major_bouts, cmap="inferno",
         heatmap = ax1.imshow(data_around_major_bouts, cmap=cmap, aspect="auto",
                              norm=col.LogNorm(), interpolation="none")  # norm=matplotlib.colors.LogNorm()
         
-    ax1.axvline(x=(params["peri_event"]["graph_distance_pre"] + 0.5) * params["recording_sampling_rate"],
+    ax1.axvline(x=(kwargs["peri_event"]["graph_distance_pre"]+0.5)*interpolated_sampling_rate,
                 color='red', linestyle='--', lw=params["lw"])
         
-    ax1.set_xticks(np.linspace(0, ((params["peri_event"]["graph_distance_pre"] + params["peri_event"]["graph_distance_post"] + 1) * params["recording_sampling_rate"]), 5)) #Generates ticks for the x axis
+    ax1.set_xticks(np.linspace(0, ((kwargs["peri_event"]["graph_distance_pre"] + kwargs["peri_event"]["graph_distance_post"]+1) * interpolated_sampling_rate), 5)) #Generates ticks for the x axis
     ax1.set_xticklabels(np.linspace(-params["peri_event"]["graph_distance_pre"], params["peri_event"]["graph_distance_post"], 5), fontsize=params["fsl"]) #Generates labels for the x axis
     ax1.set_xlim(0, len(mean_data_around_bouts))  # Sets the limits for the x axis
     ax1.set_xlabel("Time (s)", fontsize=params["fsl"])  # Displays the label for the x axis
@@ -274,7 +277,7 @@ def peri_event_plot(data_around_major_bouts, length_major_bouts, cmap="inferno",
     save_fig('Peri_Event_Plot', params, save_options={'bbox_inches': 'tight'})
 
 
-def peri_event_bar_plot(data_around_major_bouts, **params):
+def peri_event_bar_plot(data_around_major_bouts, **kwargs):
     """
     Function that compares the area under the curve (AUC) before and after the intitation of the behavior.
     The results are summarized in a bar plot showing the AUC before and after initiation of the behavior.
@@ -282,14 +285,15 @@ def peri_event_bar_plot(data_around_major_bouts, **params):
     :param np.array data_around_major_bouts: list of the pre-processed photometry data
     :param dict params: dictionary with additional parameters
     """
+
+    center = int((kwargs["peri_event"]["graph_distance_pre"] + kwargs["peri_event"]["graph_distance_post"] + 1)/2)
+    time_before = np.linspace(0, duration_pre, duration_pre * interpolated_sampling_rate)
+    data_before = data_around_major_bouts[:, (center - duration_pre) * interpolated_sampling_rate :
+                                             center * interpolated_sampling_rate]
     
-    time_before = np.linspace(0, params["peri_event"]["graph_auc_pre"],
-                              params["peri_event"]["graph_auc_pre"] * params["recording_sampling_rate"])
-    data_before = data_around_major_bouts[:, 0: params["peri_event"]["graph_auc_pre"] * params["recording_sampling_rate"]]
-    
-    time_after = np.linspace(0, params["peri_event"]["graph_auc_post"],
-                             params["peri_event"]["graph_auc_post"] * params["recording_sampling_rate"])
-    data_after = data_around_major_bouts[:, (params["peri_event"]["graph_auc_pre"] + 1) * params["recording_sampling_rate"]: (params["peri_event"]["graph_auc_pre"] + 1 + params["peri_event"]["graph_auc_post"]) * params["recording_sampling_rate"]]
+    time_after = np.linspace(0, duration_post, duration_post * interpolated_sampling_rate)
+    data_after = data_around_major_bouts[:, center * interpolated_sampling_rate :
+                                            (center + duration_post) * interpolated_sampling_rate]
     
     all_auc1 = [auc(time_before, i) for i in data_before]  # OPTIMISE: map or apply
     auc1_mean = auc(time_before, np.mean(data_before, axis=0))

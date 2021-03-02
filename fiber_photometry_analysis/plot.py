@@ -41,7 +41,8 @@ def save_fig(fig_name, params, save_options={}):
         plt.savefig(fig_path, dpi=200., **save_options)
 
 
-def set_axis(ax, data, x, add_zero_line, fig_title, label_x, multiplication_factor, y_units, params):
+def set_axis(ax, data, x, add_zero_line, fig_title, label_x, multiplication_factor, y_units, params,
+             video_time=False):
     """
     Sets the X and Y axis
 
@@ -62,7 +63,7 @@ def set_axis(ax, data, x, add_zero_line, fig_title, label_x, multiplication_fact
     if add_zero_line:
         add_line_at_zero(ax, x, line_width)
     x_max = x.iloc[-1]
-    xticks, xticklabels, unit = utils.generate_xticks_and_labels(x_max)
+    xticks, xticklabels, unit = utils.generate_xticks_and_labels(x_max, params, video_time=video_time)
     ax.set_xticks(xticks)
     ax.set_xticklabels(xticklabels, fontsize=font_size)
     ax.set_xlim(0, x_max)
@@ -84,7 +85,7 @@ def set_axis(ax, data, x, add_zero_line, fig_title, label_x, multiplication_fact
 
 
 def check_delta_f_with_behavior(bool_map, params, zorder=(0, 1), fig_name="dF_&_behavioral_overlay",
-                                extra_legend_label=""):
+                                extra_legend_label="", video_time=False):
     """
     Function that plots the pre-processed photometry data and overlays the
     behavior data.
@@ -107,7 +108,8 @@ def check_delta_f_with_behavior(bool_map, params, zorder=(0, 1), fig_name="dF_&_
     event_plot_args = {
         "linelengths": y_max - y_min,
         "lineoffsets": (y_max + y_min) / 2,
-        "alpha": 1
+        "linewidths" : 1.,
+        "alpha": 1,
     }
 
     plt.figure(figsize=(10, 3), dpi=200.)
@@ -131,19 +133,15 @@ def check_delta_f_with_behavior(bool_map, params, zorder=(0, 1), fig_name="dF_&_
     ax.eventplot(raster_data_raw,
                  color=colors[zorder[1]],
                  zorder=zorder[1],
-                 label=params["behavior_to_segment"],
+                 label=params["behavior_tag"],
                  **event_plot_args)
 
     ax.plot(x, data, zorder=2, color="green", lw=line_width)
-    ax.plot([0, x.iloc[-1]],
-            [0]*2,
-            "--",
-            color="blue",
-            )
 
-    set_axis(ax, data, x, True, fig_title, True, multiplication_factor, '', params)
+    set_axis(ax, data, x, True, fig_title, True, multiplication_factor, '', params, video_time=video_time)
 
     save_fig(fig_name, params)
+    plt.show()
 
 
 def peri_event_plot(data_around_major_bouts, length_major_bouts, interpolated_sampling_rate, params,
@@ -159,7 +157,16 @@ def peri_event_plot(data_around_major_bouts, length_major_bouts, interpolated_sa
     :param str cmap:  colormap used for the heatmap
     :param dict params:dictionary with additional parameters
     """
-    
+
+    crop_pre = (params["peri_event"]["graph_distance_pre"] - params["peri_event"]["graph_display_pre"])*interpolated_sampling_rate
+    crop_post = -(params["peri_event"]["graph_distance_post"] - params["peri_event"]["graph_display_post"]) * interpolated_sampling_rate
+    if crop_post == 0:
+        crop_post = None
+
+    print(len(data_around_major_bouts[0]))
+    data_around_major_bouts = data_around_major_bouts[:, crop_pre:crop_post]
+    print(len(data_around_major_bouts[0]))
+
     mean_data_around_bouts = np.mean(data_around_major_bouts, axis=0)  # Computes the mean for the peri-event photometry data
     std_data_around_bouts = np.std(data_around_major_bouts, axis=0)  # Computes the standard deviation for the peri-event photometry data
 
@@ -207,11 +214,11 @@ def peri_event_plot(data_around_major_bouts, length_major_bouts, interpolated_sa
         raise NotImplementedError('Unrecognised style keyword "{}"'.format(params["peri_event"]["style"]))
     y_range = y_max - y_min
     ax0.set_yticks(np.arange(y_min, y_max+round_factor, round_factor))
-    ax0.set_yticklabels(["{:.0f}".format(i) for i in np.arange(y_min, y_max+round_factor, round_factor)], fontsize=params["fsl"])
+    ax0.set_yticklabels(["{:.2f}".format(i) for i in np.arange(y_min, y_max+round_factor, round_factor)], fontsize=params["fsl"])
     ax0.set_ylim(y_min, y_max)
     
     # Creates a gray square on the line plot that represents the average length of a behavioral bout
-    patch = patches.Rectangle(((params["peri_event"]["graph_distance_pre"]+0.5)*interpolated_sampling_rate, - y_range*0.1),
+    patch = patches.Rectangle(((params["peri_event"]["graph_display_pre"]+0.5)*interpolated_sampling_rate, - y_range*0.1),
                               width=np.mean(length_major_bouts)*interpolated_sampling_rate,
                               height=y_range*0.1,
                               color="gray",
@@ -220,12 +227,16 @@ def peri_event_plot(data_around_major_bouts, length_major_bouts, interpolated_sa
     
     ax0.add_patch(patch)  # Adds the patch to the plot
     ax0.plot((0, len(mean_data_around_bouts)), (0, 0), "--", color="black", lw=params["lw"])  # Creates a horizontal dashed line at y = 0 to signal the baseline
-    vline = ax0.axvline(x=(params["peri_event"]["graph_distance_pre"]+0.5) * interpolated_sampling_rate,
+    vline = ax0.axvline(x=(params["peri_event"]["graph_display_pre"]+0.5) * interpolated_sampling_rate,
                         color='red', linestyle='--', lw=params["lw"])  # Creates a vertical dashed line at x = 0 to signal the begining of the behavioral bout
 
-    ax0.set_xticks(np.linspace(0, ((params["peri_event"]["graph_distance_pre"] + params["peri_event"]["graph_distance_post"] + 1) * interpolated_sampling_rate), 5)) #Generates ticks for the x axis
+    ax0.set_xticks(np.linspace(0, ((params["peri_event"]["graph_display_pre"] + params["peri_event"]["graph_display_post"] + 1) * interpolated_sampling_rate), 5))  # Generates ticks for the x axis
+    ax0.set_xticklabels(np.linspace(-params["peri_event"]["graph_display_pre"],
+                                     params["peri_event"]["graph_display_post"],
+                                     5),
+                        fontsize=params["fsl"],
+                        )  # Generates labels for the x axis
     ax0.set_xlim(0, len(mean_data_around_bouts))  # Sets the limits for the x axis
-#    ax0.set_xlabel("Time (s)", fontsize=kwargs["fsl"]) #Displays the label for the x axis
 
     ax0.legend(handles=[vline, patch], labels=["Begining of bout", "Average behavioral bout length"],
                loc=2, fontsize=params["fsl"])  # Displays the legend of the first figure
@@ -238,16 +249,16 @@ def peri_event_plot(data_around_major_bouts, length_major_bouts, interpolated_sa
     
     if not params["peri_event"]["normalize_heatmap"]:
         heatmap = ax1.imshow(data_around_major_bouts, cmap=cmap, aspect="auto",
-                             interpolation="none")
+                             interpolation="none", vmin=-1, vmax=3)
     else:
         heatmap = ax1.imshow(data_around_major_bouts, cmap=cmap, aspect="auto",
                              norm=col.LogNorm(), interpolation="none")  # norm=matplotlib.colors.LogNorm()
         
-    ax1.axvline(x=(params["peri_event"]["graph_distance_pre"]+0.5)*interpolated_sampling_rate,
+    ax1.axvline(x=(params["peri_event"]["graph_display_pre"]+0.5)*interpolated_sampling_rate,
                 color='red', linestyle='--', lw=params["lw"])
         
-    ax1.set_xticks(np.linspace(0, ((params["peri_event"]["graph_distance_pre"] + params["peri_event"]["graph_distance_post"]+1) * interpolated_sampling_rate), 5)) #Generates ticks for the x axis
-    ax1.set_xticklabels(np.linspace(-params["peri_event"]["graph_distance_pre"], params["peri_event"]["graph_distance_post"], 5), fontsize=params["fsl"]) #Generates labels for the x axis
+    ax1.set_xticks(np.linspace(0, ((params["peri_event"]["graph_display_pre"] + params["peri_event"]["graph_display_post"]+1) * interpolated_sampling_rate), 5)) #Generates ticks for the x axis
+    ax1.set_xticklabels(np.linspace(-params["peri_event"]["graph_display_pre"], params["peri_event"]["graph_display_post"], 5), fontsize=params["fsl"]) #Generates labels for the x axis
     ax1.set_xlim(0, len(mean_data_around_bouts))  # Sets the limits for the x axis
     ax1.set_xlabel("Time (s)", fontsize=params["fsl"])  # Displays the label for the x axis
     
@@ -256,26 +267,40 @@ def peri_event_plot(data_around_major_bouts, length_major_bouts, interpolated_sa
     ax1.set_ylabel("Duration of individual bouts (s)", fontsize=params["fsl"], labelpad=20)  # Displays the label for the x axis
 
     for n, l in enumerate(length_major_bouts):
-        ax1.text(-len(mean_data_around_bouts) * 0.01, n, l, ha="right", va="center", fontsize=params["fsl"])
+        if len(length_major_bouts) > 20:
+            if n % 5 == 0:
+                ax1.text(-len(mean_data_around_bouts) * 0.01, n, round(l), ha="right", va="center", fontsize=6)
+        else:
+            ax1.text(-len(mean_data_around_bouts) * 0.01, n, round(l), ha="right", va="center", fontsize=6)
     
     plt.gca().invert_yaxis()
-    cax = fig.add_axes([1, 0.1, 0.02, 0.35])
+    cax = fig.add_axes([0.98, 0.1, 0.02, 0.35])
     cb = plt.colorbar(heatmap, ax=ax1, cax=cax)
     cb.ax.tick_params(labelsize=params["fsl"])
     cb.ax.get_yaxis().labelpad = 8
     
     if params["photometry_pp"]["standardize"]:
         ax0.set_ylabel(r"$\Delta$F/F (Z-Score)", fontsize=params["fsl"]) #Displays the label for the y axis
-        ax0.set_title(r"$\Delta$F/F (Z-Score) in function of time before & after {0} initiation".format(params["behavior_to_segment"]), fontsize=params["fst"]) #Displays the titel for the first figure
-        ax1.set_title(r"Individual $\Delta$F/F (Z-Score) in function of time before & after {0} initiation".format(params["behavior_to_segment"]), fontsize=params["fst"])
+        ax0.set_title(r"$\Delta$F/F (Z-Score) in function of time before & after {0} initiation".format(params["behavior_tag"]), fontsize=params["fst"]) #Displays the titel for the first figure
+        ax1.set_title(r"Individual $\Delta$F/F (Z-Score) in function of time before & after {0} initiation".format(params["behavior_tag"]), fontsize=params["fst"])
         cb.ax.set_ylabel(r"$\Delta$F/F (Z-Score)", rotation=270, fontsize=params["fsl"])
     else:
         ax0.set_ylabel(r"$\Delta$F/F (%)", fontsize=params["fsl"]) #Displays the label for the y axis
-        ax0.set_title(r"$\Delta$F/F (%) in function of time before & after {0} initiation".format(params["behavior_to_segment"]), fontsize=params["fst"]) #Displays the titel for the first figure
-        ax1.set_title(r"Individual $\Delta$F/F (%) in function of time before & after {0} initiation".format(params["behavior_to_segment"]), fontsize=params["fst"])
+        ax0.set_title(r"$\Delta$F/F (%) in function of time before & after {0} initiation".format(params["behavior_tag"]), fontsize=params["fst"]) #Displays the titel for the first figure
+        ax1.set_title(r"Individual $\Delta$F/F (%) in function of time before & after {0} initiation".format(params["behavior_tag"]), fontsize=params["fst"])
         cb.ax.set_ylabel(r"$\Delta$F/F (%)", rotation=270, fontsize=params["fsl"])
 
     save_fig('Peri_Event_Plot', params, save_options={'bbox_inches': 'tight'})
+    plt.show()
+
+    perievent_metadata = {"data": data_around_major_bouts,
+                          "data_bout_length": length_major_bouts,
+                          "data_sampling_rate": interpolated_sampling_rate,
+                          "duration_pre": params["peri_event"]["graph_distance_pre"],
+                          "duration_post": params["peri_event"]["graph_distance_post"],
+                          }
+
+    return perievent_metadata
 
 
 def peri_event_bar_plot(data_around_major_bouts, interpolated_sampling_rate, params, duration_pre=2,
@@ -366,16 +391,17 @@ def peri_event_bar_plot(data_around_major_bouts, interpolated_sampling_rate, par
     ax0.set_yticklabels(int_ticks, fontsize=params["fsl"])
     ax0.plot((-0.5, 1.5), (0, 0), lw=1, color="black")  # FIXME: add_zero_line ??
     ax0.set_xticks([0, 1])
-    ax0.set_xticklabels(["Before initiating {0}".format(params["behavior_to_segment"]),
-                         "After initiating {0}".format(params["behavior_to_segment"])],
+    ax0.set_xticklabels(["Before initiating {0}".format(params["behavior_tag"]),
+                         "After initiating {0}".format(params["behavior_tag"])],
                         fontsize=params["fsl"])
     
     ax0.set_ylim(y_min+y_min*0.5, y_max+y_max*0.5)
     ax0.set_ylabel("Area under the curve (AUC)", fontsize=params["fsl"])
-    ax0.set_title("Before vs After initiation of {0} Response Changes".format(params["behavior_to_segment"]),
+    ax0.set_title("Before vs After initiation of {0} Response Changes".format(params["behavior_tag"]),
                   fontsize=params["fst"])
 
     save_fig('AUC', params, save_options={'bbox_inches': 'tight'})
+    plt.show()
 
 
 def plot_data_pair(calcium_data, isosbestic_data, x, title, params, add_zero_line=False, units='', to_milli=False,
@@ -418,11 +444,10 @@ def plot_data_pair(calcium_data, isosbestic_data, x, title, params, add_zero_lin
         ax1.plot(x, calcium_baseline, alpha=0.8, c="orange", lw=2, label='baseline')
     set_axis(ax1, calcium_data, x, add_zero_line, '', True, multiplication_factor, units, params)
 
-    plt.show()
-
     if params["photometry_pp"]["multicursor"]:
         multi = MultiCursor(fig.canvas, [ax0, ax1], color='r', lw=1, vertOn=[ax0, ax1])  # FIXME: unused
     save_fig(fig_name, params)
+    plt.show()
 
 
 def plot_cropped_data(calcium_data, calcium_fc, isosbestic_data, isosbestic_fc, x, params):
@@ -465,6 +490,7 @@ def plot_ca_iso_regression(calcium, isosbestic, isosbestic_fitted, params):
     ax.tick_params(axis='both', which='major', labelsize=params["fsl"])
 
     save_fig("Interchannel_Regression", params)
+    plt.show()
 
 
 def plot_delta_f(calcium, isosbestic, x, params):
@@ -492,6 +518,7 @@ def plot_delta_f(calcium, isosbestic, x, params):
                  True, multiplication_factor, y_units, params)
 
     save_fig("Baseline_Determination", params)
+    plt.show()
 
 
 def plot_aligned_channels(x, isosbestic, calcium, params):  # FIXME: plot only. Rename
@@ -523,3 +550,4 @@ def plot_aligned_channels(x, isosbestic, calcium, params):  # FIXME: plot only. 
                  True, multiplication_factor, y_units, params)
 
         save_fig(fig_name, params)
+        plt.show()

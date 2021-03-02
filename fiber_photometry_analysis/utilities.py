@@ -142,7 +142,7 @@ def set_file_paths(working_directory, experiment, mouse):
     return files
 
 
-def generate_xticks_and_labels(time):  # FIXME: extract unit computation
+def generate_xticks_and_labels(time, params, video_time=False):  # FIXME: extract unit computation
     """Small funtion that automatically generates xticks and labels for plots 
     depending on the length (s) of the data.
     
@@ -151,6 +151,7 @@ def generate_xticks_and_labels(time):  # FIXME: extract unit computation
     Returns :   xticks (arr) = the xticks
                 xticklabels (arr) = the labels
                 unit (str) = the unit
+                :param params:
     """
     
     n_mins = (time - time % 60) / 60
@@ -163,6 +164,8 @@ def generate_xticks_and_labels(time):  # FIXME: extract unit computation
         xticks = np.arange(0, (time - (time % 60)) + step_ticks, step_ticks)
         step_labels = step_ticks / 60
         xticklabels = np.arange(0, ((time - (time % 60)) / 60) + step_labels, step_labels)
+        if video_time:
+            xticklabels = xticklabels + (params["crop_start"] / 60)
         unit = "min"
     else:
         if time >= 10:
@@ -172,6 +175,8 @@ def generate_xticks_and_labels(time):  # FIXME: extract unit computation
             step_ticks = 1
             xticks = np.arange(0, time + step_ticks, step_ticks)
         xticklabels = xticks
+        if video_time:
+            xticklabels = xticklabels + params["crop_start"]
         unit = "sec"
     
     return xticks, xticklabels, unit

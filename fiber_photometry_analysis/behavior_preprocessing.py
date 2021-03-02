@@ -30,21 +30,34 @@ def extract_row(data_frame, row_name):
     row_values = row_values[row_values > 0]
     return row_values
 
+
 def extract_column(data_frame, column_name):
     column_values = data_frame[column_name]
-    return column_values[column_values > 0]
+    return np.array(column_values[column_values >= 0])
 
 
-def extract_behavior_data(file_path, behaviour_name, transpose=True):
+def merge_behavioral_bouts(df, behaviors): # OPTIMISE : use numpy
+    all_starts = []
+    all_ends = []
+    for beh in behaviors:
+        starts, ends = extract_column(df, "tStart{0}".format(beh)), extract_column(df, "tEnd{0}".format(beh))
+        all_starts.append(starts)
+        all_ends.append(ends)
+    all_starts = [x for sublist in all_starts for x in sublist]
+    all_ends = [x for sublist in all_ends for x in sublist]
+    order = np.argsort(all_starts)
+    return np.array(all_starts)[order], np.array(all_ends)[order]
+
+
+def extract_behavior_data(file_path, behaviour_names, transpose=True):
     """Extracts the raw behavior data from an excel file and cleans it.
 
     :param str file_path:  the path to the excel file
-    :param str behaviour_name: The name of the behaviour type to be analysed
+    :param str behaviour_names: The name of the behaviour(s) type(s) to be analysed
     :return:start (arr) = the starting timepoints for the behavioral bouts
             end (arr) = the ending timepoints for the behavioral bouts
     """
-    
-    # df = pd.read_excel(file_path, header=None)  # FIXME: replace with rewrite binary dataframe
+
     df = pd.read_excel(file_path, header=None)
     if transpose:
         df = df.T
@@ -52,11 +65,11 @@ def extract_behavior_data(file_path, behaviour_name, transpose=True):
         df.columns = column_names
         df = df.drop(0)
         df = io.reset_dataframe_index(df)
-        starts = extract_column(df, "tStart{0}".format(behaviour_name))
-        ends = extract_column(df, "tEnd{0}".format(behaviour_name))
-    else:
-        starts = extract_row(df, "tStart{0}".format(behaviour_name))
-        ends = extract_row(df, "tEnd{0}".format(behaviour_name))
+    if isinstance(behaviour_names, list):
+        starts, ends = merge_behavioral_bouts(df, behaviour_names)
+    else :
+        starts = extract_column(df, "tStart{0}".format(behaviour_names))
+        ends = extract_column(df, "tEnd{0}".format(behaviour_names))
     return starts, ends
 
 
@@ -91,8 +104,8 @@ def estimate_length_bool_map(recording_duration, res):
 
 def match_time_behavior_to_photometry(starts, ends, recording_duration, video_duration, res):
     ratio = recording_duration / video_duration
-    starts = np.round((starts*ratio).to_numpy().astype(float), 1) * res
-    ends = np.round((ends*ratio).to_numpy().astype(float), 1) * res
+    starts = np.round((starts*ratio).astype(float), 1) * res
+    ends = np.round((ends*ratio).astype(float), 1) * res
     return starts, ends
 
 

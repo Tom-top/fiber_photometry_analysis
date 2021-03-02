@@ -8,6 +8,11 @@ Created on Mon Oct 19 13:15:03 2020
 import logging
 import os
 
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
+
 import pandas as pd
 import numpy as np
 
@@ -125,6 +130,18 @@ def convert_to_feather(file, recompute=True, **kwargs):
             pass
     else:
         pass
+
+
+def save_perievent_data_to_pickle(metadata, experiment, mouse, params):
+    file_saving_path = os.path.join(params["save_dir"], "perievent_data_{}_{}.pkl".format(experiment, mouse))
+    with open(file_saving_path, 'wb') as f:
+        pickle.dump(metadata, f)
+
+
+def load_perievent_pickle(file_path):
+    with open(file_path, 'rb') as f:
+        data = pickle.load(f)
+    return data
 
 
 def get_recording_duration_and_sampling_rate(file_path, allow_downsampling=True):

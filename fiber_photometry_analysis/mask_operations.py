@@ -109,14 +109,49 @@ def filter_small_events(bool_map, event_size):
         filtered_bool_map[s:e] = 0
     return filtered_bool_map
 
-def filter_edge_events(bool_map, res):
-    start_points = find_start_points_events(bool_map)
 
-def find_start_points_events(bool_map):
+def filter_large_events(bool_map, event_size):
+    uptimes = get_up_times_bool_map(bool_map)
+    length_uptimes = uptimes[:, 1] - uptimes[:, 0]
+    large_uptimes_mask = length_uptimes >= event_size
+    large_uptimes_pos = np.where(large_uptimes_mask)[0]
+    filtered_bool_map = bool_map.copy()
+    for s, e in uptimes[large_uptimes_pos]: # OPTIMISE: numpy
+        filtered_bool_map[s:e] = 0
+    return filtered_bool_map
+
+
+def filter_edge_events(bool_map, res_bool_map, graph_distance_pre, graph_distance_post):
+    recording_duration = int(len(bool_map)/res_bool_map)
+    start_points = find_start_points_events(bool_map)
+    up_times = get_up_times_bool_map(bool_map)
+    edge_events_mask = np.logical_or(start_points <= graph_distance_pre * res_bool_map,
+                                     start_points >= (recording_duration - graph_distance_post) * res_bool_map)
+    edge_events = up_times[edge_events_mask]
+    filtered_bool_map = bool_map.copy()
+    for s, e in edge_events:  # OPTIMISE: numpy
+        filtered_bool_map[s:e] = 0
+    return filtered_bool_map
+
+def generate_diff_bool_map(bool_map):
     ones_pos = np.concatenate(([0], np.equal(bool_map, 1).view(np.int8), [0]))
     absolute_diff = np.diff(ones_pos)
+    return absolute_diff
+
+def find_start_points_events(bool_map):
+    absolute_diff = generate_diff_bool_map(bool_map)
     start_points = np.where(absolute_diff == 1)[0]
     return start_points
+
+def find_end_points_events(bool_map):
+    absolute_diff = generate_diff_bool_map(bool_map)
+    end_points = np.where(absolute_diff == -1)[0]
+    return end_points
+
+def ranges_from_bool_map(bool_map):
+    starts = find_start_points_events(bool_map)
+    ends = find_end_points_events(bool_map)
+    return np.column_stack((starts, ends)).reshape(-1, 2)
 
 def get_length_events(bool_map, res):
     uptimes = get_up_times_bool_map(bool_map)

@@ -58,6 +58,7 @@ def extract_behavior_data(file_path, behaviour_names, transpose=True):
             end (arr) = the ending timepoints for the behavioral bouts
     """
 
+    result = {}
     df = pd.read_excel(file_path, header=None)
     if transpose:
         df = df.T
@@ -65,12 +66,14 @@ def extract_behavior_data(file_path, behaviour_names, transpose=True):
         df.columns = column_names
         df = df.drop(0)
         df = io.reset_dataframe_index(df)
-    if isinstance(behaviour_names, list):
-        starts, ends = merge_behavioral_bouts(df, behaviour_names)
-    else :
-        starts = extract_column(df, "tStart{0}".format(behaviour_names))
-        ends = extract_column(df, "tEnd{0}".format(behaviour_names))
-    return starts, ends
+    for beh in behaviour_names:
+        if isinstance(beh, list):
+            starts, ends = merge_behavioral_bouts(df, beh)
+        else :
+            starts = extract_column(df, "tStart{0}".format(beh))
+            ends = extract_column(df, "tEnd{0}".format(beh))
+        result[beh] = np.column_stack((starts, ends))
+    return result
 
 
 def estimate_behavior_time_resolution(starts, ends):
@@ -102,11 +105,21 @@ def estimate_length_bool_map(recording_duration, res):
     return int(recording_duration*res)
 
 
-def match_time_behavior_to_photometry(starts, ends, recording_duration, video_duration, res):
+# def match_time_behavior_to_photometry(starts, ends, recording_duration, video_duration, res):
+#     ratio = recording_duration / video_duration
+#     starts = np.round((starts*ratio).astype(float), 1) * res
+#     ends = np.round((ends*ratio).astype(float), 1) * res
+#     return starts, ends
+
+
+def match_time_behavior_to_photometry(behavior_data, recording_duration, video_duration, res):
     ratio = recording_duration / video_duration
-    starts = np.round((starts*ratio).astype(float), 1) * res
-    ends = np.round((ends*ratio).astype(float), 1) * res
-    return starts, ends
+    result = {}
+    for beh, value in behavior_data.items():
+        starts = np.round((value[:, 0]*ratio).astype(float), 1) * res
+        ends = np.round((value[:, 1]*ratio).astype(float), 1) * res
+        result[beh] = np.column_stack((starts, ends))
+    return result
 
 
 def create_bool_map(bouts_positions, total_duration, sample_interval):

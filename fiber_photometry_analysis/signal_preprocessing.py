@@ -7,9 +7,11 @@ Created on Mon Oct 19 10:08:31 2020
 """
 import logging
 import os
+import pickle
 
 import numpy as np
 import pandas as pd
+import peakutils
 
 from scipy.interpolate import interp1d
 
@@ -18,7 +20,7 @@ from sklearn.linear_model import Lasso, LinearRegression
 import matplotlib.pyplot as plt
 
 from fiber_photometry_analysis.generic_signal_processing import down_sample_signal, smooth_signal, crop_signal
-from fiber_photometry_analysis.generic_signal_processing import baseline_asymmetric_least_squares_smoothing
+from fiber_photometry_analysis.generic_signal_processing import baseline_asymmetric_least_squares_smoothing, airPLS
 from fiber_photometry_analysis.plot import plot_data_pair, plot_cropped_data, plot_ca_iso_regression, \
     plot_delta_f, plot_aligned_channels
 
@@ -43,9 +45,8 @@ def extract_raw_data(file_path, params):
     logging.info("\nExtracting raw data for Isosbestic and Calcium recordings !")
     photometry_data = pd.read_feather(file_path)
     x = photometry_data["Time(s)"]
-    isosbestic = photometry_data["AIn-1 - Dem (AOut-{})".format(params["isosbestic_channel"])]
-    calcium = photometry_data["AIn-1 - Dem (AOut-{})".format(params["calcium_channel"])]
-    plot_data_pair(calcium, isosbestic, x, 'raw', params, units='mV', to_milli=True)
+    isosbestic = photometry_data["AIn-1 - Dem (AOut-{})".format(params["general"]["photometry"]["isosbestic_channel"])]
+    calcium = photometry_data["AIn-1 - Dem (AOut-{})".format(params["general"]["photometry"]["calcium_channel"])]
 
     return x, isosbestic, calcium
 
@@ -124,21 +125,29 @@ def find_baseline_and_crop(x, isosbestic, calcium, params):  # WARNING: does 2 t
     logging.info("\nStarting baseline computation for Isosbestic and Calcium signals !")
 
     x = crop_signal(x,
-                    params["recording_sampling_rate"],
-                    crop_start=params["crop_start"],
-                    crop_end=params["crop_end"])
+                    params["general"]["recording_sampling_rate"],
+                    crop_start=params["signal_pp"]["general"]["crop_start"],
+                    crop_end=params["signal_pp"]["general"]["crop_end"])
     x = x - x.iloc[0]
     isosbestic = crop_signal(isosbestic,
-                             params["recording_sampling_rate"],
-                             crop_start=params["crop_start"],
-                             crop_end=params["crop_end"])
+                             params["general"]["recording_sampling_rate"],
+                             crop_start=params["signal_pp"]["general"]["crop_start"],
+                             crop_end=params["signal_pp"]["general"]["crop_end"])
     calcium = crop_signal(calcium,
-                          params["recording_sampling_rate"],
-                          crop_start=params["crop_start"],
-                          crop_end=params["crop_end"])
+                          params["general"]["recording_sampling_rate"],
+                          crop_start=params["signal_pp"]["general"]["crop_start"],
+                          crop_end=params["signal_pp"]["general"]["crop_end"])
 
-    isosbestic_fc = baseline_asymmetric_least_squares_smoothing(isosbestic, params["lambda"], params["p"])
-    calcium_fc = baseline_asymmetric_least_squares_smoothing(calcium, params["lambda"], params["p"])
+    if params["signal_pp"]["baseline_determination"]["method"] == "als":
+        isosbestic_fc = baseline_asymmetric_least_squares_smoothing(isosbestic,
+                                                                    params["signal_pp"]["baseline_determination"]["als_lambda"],
+                                                                    params["signal_pp"]["baseline_determination"]["als_pval"])
+        calcium_fc = baseline_asymmetric_least_squares_smoothing(calcium,
+                                                                 params["signal_pp"]["baseline_determination"]["als_lambda"],
+                                                                 params["signal_pp"]["baseline_determination"]["als_pval"])
+    else:
+        isosbestic_fc = peakutils.baseline(isosbestic, deg=4)
+        calcium_fc = peakutils.baseline(calcium, deg=4)
         
     return x, isosbestic, calcium, isosbestic_fc, calcium_fc
 
@@ -230,104 +239,111 @@ def compute_delta_f(isosbestic, calcium):
     return delta_f
 
 
-def load_photometry_data(photometry_data_file_path, params):
+def load_photometry_data(photometry_data_file_path, params, recompute=True):
     """
     Function that runs all the pre-processing steps on the raw isosbestic and
     calcium data and displays it in plot(s).
     
+    :param recompute:
     :param str photometry_data_file_path: The input photometry file for analysis
     :param dict params: Dictionary with the parameters
     :return: data (dict) = A dictionary holding all the results from subsequent steps
              OR
              dFF (arr) = Relative changes of fluorescence over time
     """
-    x0, isosbestic, calcium = extract_raw_data(photometry_data_file_path, params)
-    plot_data_pair(calcium, isosbestic, x0, 'raw', params, units='mV', to_milli=True)
+    dir_name = os.path.dirname(photometry_data_file_path)
+    file_name = os.path.splitext(os.path.basename(photometry_data_file_path))[0]
+    pickle_path = os.path.join(dir_name, "processed_photometry_data.pickle".format(file_name))
+    if recompute:
+        x0, isosbestic, calcium = extract_raw_data(photometry_data_file_path, params)
+        if params["signal_pp"]["raw_data"]["plot"]:
+            plot_data_pair(calcium, isosbestic, x0, 'raw', params, units='mV', to_milli=True,
+                           save=params["signal_pp"]["raw_data"]["save"])
 
-    x1, isosbestic_smoothed, calcium_smoothed = smooth(x0, isosbestic, calcium, win_len=params["smoothing_window"])
-    plot_data_pair(calcium_smoothed, isosbestic_smoothed, x1, 'smoothed', params, to_milli=True)
-    
-    x2, isosbestic_cropped, calcium_cropped, function_isosbestic, function_calcium = find_baseline_and_crop(x1,
-                                                                                                            isosbestic_smoothed,
-                                                                                                            calcium_smoothed,
-                                                                                                            params)
-    plot_cropped_data(calcium_cropped, function_calcium, isosbestic_cropped, function_isosbestic, x2, params)
-    
-    isosbestic_corrected, calcium_corrected = baseline_correction(isosbestic_cropped, calcium_cropped,
-                                                                  function_isosbestic, function_calcium)
-    plot_data_pair(calcium_corrected, isosbestic_corrected, x2, 'baseline_corrected', params, add_zero_line=True,
-                   to_milli=True)
+        x1, isosbestic_smoothed, calcium_smoothed = smooth(x0, isosbestic, calcium,
+                                                           win_len=params["signal_pp"]["smoothing"]["smoothing_window"])
+        if params["signal_pp"]["smoothing"]["plot"]:
+            plot_data_pair(calcium_smoothed, isosbestic_smoothed, x1, 'smoothed', params, to_milli=True,
+                           save=params["signal_pp"]["smoothing"]["save"])
 
-    isosbestic_standardized, calcium_standardized = standardization(isosbestic_corrected, calcium_corrected,
-                                                                    params["photometry_pp"]["standardize"])
-    plot_data_pair(calcium_standardized, isosbestic_standardized, x2, 'Standardized', params, add_zero_line=True,
-                   units='z-score')
+        x2, isosbestic_cropped, calcium_cropped, function_isosbestic, function_calcium = find_baseline_and_crop(x1,
+                                                                                                                isosbestic_smoothed,
+                                                                                                                calcium_smoothed,
+                                                                                                                params)
+        if params["signal_pp"]["baseline_determination"]["plot"]:
+            plot_cropped_data(calcium_cropped, function_calcium, isosbestic_cropped, function_isosbestic, x2, params)
 
-    isosbestic_fitted = interchannel_regression(isosbestic_standardized, calcium_standardized,
-                                                regression_type=params["photometry_pp"]["regression"])
-    plot_ca_iso_regression(isosbestic_standardized, calcium_standardized, isosbestic_fitted, params)
-        
-    plot_aligned_channels(x2, isosbestic_fitted, calcium_standardized, params)
-    
-    delta_f = compute_delta_f(isosbestic_fitted, calcium_standardized)
-    plot_delta_f(calcium_standardized, isosbestic_fitted, x2, params)
-    
-    sampling_rate = params["recording_sampling_rate"]
-    time_lost = (len(x0) - len(x2))/sampling_rate
-    raw_isosbestic_cropped, raw_calcium_cropped =\
-    [crop_signal(i, sampling_rate, crop_start=params["crop_start"], crop_end=params["crop_end"])
-     for i in [isosbestic, calcium]]
+        isosbestic_corrected, calcium_corrected = baseline_correction(isosbestic_cropped, calcium_cropped,
+                                                                      function_isosbestic, function_calcium)
+        if params["signal_pp"]["baseline_correction"]["plot"]:
+            plot_data_pair(calcium_corrected, isosbestic_corrected, x2, 'baseline_corrected', params,
+                           add_zero_line=True, to_milli=True, save=params["signal_pp"]["baseline_correction"]["save"])
 
-    df = pd.DataFrame({
-        "time": x2,
-        "raw_isosbestic_cropped": raw_isosbestic_cropped,
-        "isosbestic_cropped": isosbestic_cropped,
-        "isosbestic_corrected": isosbestic_corrected,
-        "isosbestic_standardized": isosbestic_standardized,
-        "isosbestic_fitted": isosbestic_fitted,
-        "raw_calcium_cropped": raw_isosbestic_cropped,
-        "calcium_cropped": calcium_cropped,
-        "calcium_corrected": calcium_corrected,
-        "calcium_standardized": isosbestic_standardized,
-                    "dF": delta_f,
-    })
-    df = io.reset_dataframe_index(df)
-    df.to_feather(os.path.join(params["save_dir"], "photometry_data.feather"))
-        
-    data = {
-        "raw": {
-            "x": x0,
-            "isosbestic": isosbestic,
-            "calcium": calcium
-        },
-        "smoothed": {
-            "x": x1,
-            "isosbestic": isosbestic_smoothed,
-            "calcium": calcium_smoothed
-        },
-        "cropped": {
-            "x": x2,
-            "isosbestic": isosbestic_cropped,
-            "calcium": calcium_cropped,
-            "isosbestic_fc": function_isosbestic,
-            "calcium_fc": function_calcium
-        },
-        "baseline_correction": {
-            "x": x2,
-            "isosbestic": isosbestic_corrected,
-            "calcium": calcium_corrected
-        },
-        "standardization": {
-            "x": x2,
-            "isosbestic": isosbestic_standardized,
-            "calcium": calcium_standardized
-        },
-        "regression": {"fit": isosbestic_fitted},
-        "dFF": {
-            "x": x2,
-            "dFF": delta_f
-        },
-        "time_lost": time_lost
-    }
-            
-    return data
+        isosbestic_standardized, calcium_standardized = standardization(isosbestic_corrected, calcium_corrected,
+                                                                        params["signal_pp"]["standardization"]["standardize"])
+        if params["signal_pp"]["standardization"]["plot"]:
+            plot_data_pair(calcium_standardized, isosbestic_standardized, x2, 'Standardized', params,
+                           add_zero_line=True, units='z-score', save=params["signal_pp"]["standardization"]["save"])
+
+        isosbestic_fitted = interchannel_regression(isosbestic_standardized, calcium_standardized,
+                                                    regression_type=params["signal_pp"]["inter_channel_regression"]["method"])
+        if params["signal_pp"]["inter_channel_regression"]["plot"]:
+            plot_ca_iso_regression(isosbestic_standardized, calcium_standardized, isosbestic_fitted, params,
+                                   save=params["signal_pp"]["inter_channel_regression"]["save"])
+
+        if params["signal_pp"]["channel_alignement"]["plot"]:
+            plot_aligned_channels(x2, isosbestic_fitted, calcium_standardized, params,
+                                  save=params["signal_pp"]["channel_alignement"]["save"])
+
+        delta_f = compute_delta_f(isosbestic_fitted, calcium_standardized)
+        if params["signal_pp"]["delta_F"]["plot"]:
+            plot_delta_f(calcium_standardized, isosbestic_fitted, x2, params,
+                         save=params["signal_pp"]["delta_F"]["save"])
+
+        data = {
+            "raw": {
+                "x": x0,
+                "isosbestic": isosbestic,
+                "calcium": calcium
+            },
+            "smoothed": {
+                "x": x1,
+                "isosbestic": isosbestic_smoothed,
+                "calcium": calcium_smoothed
+            },
+            "cropped": {
+                "x": x2,
+                "isosbestic": isosbestic_cropped,
+                "calcium": calcium_cropped,
+                "isosbestic_fc": function_isosbestic,
+                "calcium_fc": function_calcium
+            },
+            "baseline_correction": {
+                "x": x2,
+                "isosbestic": isosbestic_corrected,
+                "calcium": calcium_corrected
+            },
+            "standardization": {
+                "x": x2,
+                "isosbestic": isosbestic_standardized,
+                "calcium": calcium_standardized
+            },
+            "regression": {"fit": isosbestic_fitted},
+            "dFF": {
+                "x": x2,
+                "dFF": delta_f
+            },
+            # "time_lost": time_lost
+        }
+
+        with open(pickle_path, 'wb') as handle:
+            pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        return data
+    else:
+        if os.path.exists(pickle_path):
+            with open(pickle_path, 'rb') as handle:
+                data = pickle.load(handle)
+            return data
+        else:
+            data = load_photometry_data(photometry_data_file_path, params, recompute=True)
+            return data

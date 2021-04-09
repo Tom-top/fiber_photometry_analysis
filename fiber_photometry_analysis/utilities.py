@@ -101,7 +101,20 @@ def check_if_path_exists(path):
         return True
 
 
-def set_file_paths(working_directory, experiment, mouse):
+def create_workspace(working_directory):
+    saving_directory = os.path.join(working_directory, "results")
+    directories_to_create = {"saving_directory": saving_directory,
+                             "plot_directory": os.path.join(saving_directory, "plots"),
+                             "data_directory": os.path.join(saving_directory, "data"),
+                             }
+
+    for dtc in directories_to_create.values():
+        if not os.path.exists(dtc):
+            os.mkdir(dtc)
+    return directories_to_create
+
+
+def load_workspace(working_directory, experiment, mouse):
     """Function that receives the working directory as an argument as well as
     the experiment name and the mouse name and returns the paths of the files for
     analysis
@@ -120,26 +133,22 @@ def set_file_paths(working_directory, experiment, mouse):
         return os.path.join(working_directory,
                             "{}_{}_{}.{}".format(base_name, experiment, mouse, ext))
 
-    files = [
-        get_generic_file_path("photometry", "csv"),
-        get_generic_file_path("video", "avi"),
-        get_generic_file_path("behavior_automatic", "npy"),
-        get_generic_file_path("behavior_manual", "xlsx")
-    ]
+    workspace = {"photometry_file": get_generic_file_path("photometry", "csv"),
+                 "color_video": get_generic_file_path("color_video", "mp4"),
+                 "depth_video": get_generic_file_path("depth_video", "mp4"),
+                 "behavior_automatic": get_generic_file_path("behavior_automatic", "npy"),
+                 "behavior_manual": get_generic_file_path("behavior_manual", "xls"),
+                 }
 
-    saving_directory = os.path.join(working_directory, "Results")
-    files.append(saving_directory)
+    workspace_directories = create_workspace(working_directory)
+    workspace.update(workspace_directories)
 
-    for n, p in enumerate(files):
-        if p == saving_directory:
-            if not os.path.exists(p):
-                os.mkdir(saving_directory)
-        else:
-            exists = check_if_path_exists(p)
-            if not exists:
-                files[n] = None
+    for n, p in workspace.items():
+        exists = check_if_path_exists(p)
+        if not exists:
+            workspace[n] = None
 
-    return files
+    return workspace
 
 
 def generate_xticks_and_labels(time, params, video_time=False):  # FIXME: extract unit computation
@@ -225,3 +234,29 @@ def offset(value, offset, sign):  # FIXME: shadows name
 def replace_ext(file_path, file_ext):  # TODO: check if exists
     return os.path.join(os.path.dirname(file_path),
                         "{}.{}".format(os.path.basename(file_path).split(".")[0], file_ext))
+
+def replace_photometry_files_into_folders(working_directory):
+    photometry_files = []
+    for f in os.listdir(working_directory):
+        if f.endswith(".csv") and f.startswith("photometry"):
+            photometry_files.append(f)
+    for f in photometry_files:
+        file_path = os.path.join(working_directory, f)
+        file_name = os.path.splitext(f)[0]
+        folder_name = "_".join(file_name.split("_")[2:])
+        folder_path = os.path.join(working_directory, folder_name)
+        os.rename(file_path, os.path.join(folder_path, f))
+
+def rename_video_names(working_directory):
+    for folder in os.listdir(working_directory):
+        path_to_foler = os.path.join(working_directory, folder)
+        if os.path.isdir(path_to_foler):
+            for file in os.listdir(path_to_foler):
+                path_to_file = os.path.join(path_to_foler, file)
+                if file.endswith(".mp4") and not file.startswith("."):
+                    file_name = os.path.splitext(file)[0]
+                    file_ext = os.path.splitext(file)[1]
+                    split_name = file_name.split("_")
+                    new_name = "_".join(split_name[:-2]+split_name[::-1][:2]) + file_ext
+                    new_path_to_foler = os.path.join(path_to_foler, new_name)
+                    os.rename(path_to_file, new_path_to_foler)

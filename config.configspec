@@ -1,0 +1,105 @@
+[general]
+
+    [[general]]
+    analysis_type = string(default='photometry')
+
+    [[photometry]]
+    allow_downsampling = boolean(default=True)
+    isosbestic_channel = integer(default=2)
+    calcium_channel = integer(default=1)
+    purple_laser = string(default='#8200c8')
+    blue_laser = string(default='#0092ff')
+
+[signal_pp]
+
+    [[general]]
+    crop_start = integer(default=60)
+    crop_end = integer(default=60)
+    plot = boolean(default=True)
+    save = boolean(default=True)
+
+    [[raw_data]]
+    plot = boolean(default=True)
+    save = boolean(default=True)
+
+    [[smoothing]]
+    plot = boolean(default=True)
+    save = boolean(default=True)
+
+    [[baseline_determination]]
+    method = string(default='als')
+    als_lambda = integer(default=100000000000)
+    als_pval = float(default=0.005)
+    plot = boolean(default=True)
+    save = boolean(default=True)
+
+    [[baseline_correction]]
+    plot = boolean(default=True)
+    save = boolean(default=True)
+
+    [[standardization]]
+    standardize = boolean(default=True)
+    plot = boolean(default=True)
+    save = boolean(default=True)
+
+    [[inter_channel_regression]]
+    method = string(default='lasso')
+    plot = boolean(default=True)
+    save = boolean(default=True)
+
+    [[channel_alignement]]
+    plot = boolean(default=True)
+    save = boolean(default=True)
+
+    [[delta_F]]
+    plot = boolean(default=True)
+    save = boolean(default=True)
+
+[behavior_pp]
+
+    [[general]]
+    invert_behavior = boolean(default=False)
+    behavior_to_segment = string_list(default=list('rest'))
+    behavior_tag = string_list(default=list('rest'))
+
+    [[merge_close_peaks]]
+    peak_merging_distance = integer(default=4)
+    plot = boolean(default=True)
+    save = boolean(default=True)
+
+    [[filter_small_events]]
+    minimal_bout_length = integer(default=4)
+    plot = boolean(default=True)
+    save = boolean(default=True)
+
+[plotting]
+
+    [[general]]
+    lw = float(default=1.0)
+    fsl = float(default=6.0)
+    fst = float(default=8.0)
+
+    [[peri_event]]
+    time_before_event = integer(default=10)
+    time_after_event = integer(default=10)
+    plot = boolean(default=True)
+    style = string(default='average')
+    individual_color = boolean(default=False)
+    normalize_heatmap = boolean(default=False)
+    save = boolean(default=True)
+
+    [[AUC]]
+    AUC_before = integer(default=2)
+    AUC_after = integer(default=2)
+
+[saving]
+
+    [[general]]
+    extension = string(default='string')
+
+[live_video]
+
+    [[general]]
+    resizing_factor_video = integer(default=1)
+    global_acceleration = integer(default=20)
+    live_plot_fps = integer(default=15)

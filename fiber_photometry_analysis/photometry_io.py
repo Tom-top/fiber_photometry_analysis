@@ -25,6 +25,8 @@ from fiber_photometry_analysis.utilities import replace_ext
 
 
 def validate_path(file_path):
+    if file_path == None:
+        raise FiberFotometryIoFileNotFoundError(file_path)
     if not os.path.exists(file_path):
         raise FiberFotometryIoFileNotFoundError(file_path)
 
@@ -35,8 +37,9 @@ def convert_photometry_data_to_dataframe(file_path):
     return filtered_data
 
 
-def save_dataframe_to_feather(source_file_path, saving_path, name, overwrite=False):
-    saving_file_path = os.path.join(saving_path, name+".feather")
+def save_dataframe_to_feather(source_file_path, saving_path, overwrite=False):
+    saving_name = os.path.splitext(os.path.basename(source_file_path))[0]
+    saving_file_path = os.path.join(saving_path, "results/data/{}.feather".format(saving_name))
     if not os.path.exists(saving_file_path):
         df = convert_photometry_data_to_dataframe(source_file_path)
         df.to_feather(saving_file_path)
@@ -133,7 +136,7 @@ def convert_to_feather(file, recompute=True, **kwargs):
 
 
 def save_perievent_data_to_pickle(metadata, experiment, mouse, params):
-    file_saving_path = os.path.join(params["save_dir"], "perievent_data_{}_{}.pkl".format(experiment, mouse))
+    file_saving_path = os.path.join(params["save_dir_behavior"], "perievent_data_{}_{}.pickle".format(experiment, mouse))
     with open(file_saving_path, 'wb') as f:
         pickle.dump(metadata, f)
 
@@ -174,8 +177,13 @@ def get_recording_duration_and_sampling_rate(file_path, allow_downsampling=True)
             sr /= factor
             logging.info("Downsampling was enabled by user. New sampling rate of data : {0}Hz".format(sr))
 
+    sampling_info = {"recording_duration": round(x_max),
+                     "recording_sampling_rate": sr,
+                     "downsampling_factor": factor
+                     }
     logging.info("Length of recording : {}s, estimated sampling rate of the system : {}".format(round(x_max), sr))
-    return round(x_max), sr, factor
+
+    return sampling_info
     
 
 def get_video_duration_and_framerate(file_path):

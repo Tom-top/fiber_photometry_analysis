@@ -2,6 +2,9 @@
 
     [[general]]
     analysis_type = string(default='photometry')
+    behavior_to_segment = string(default='nesting')
+    behavior_tag = string(default='nesting')
+    invert_behavior = boolean(default=False)
 
     [[photometry]]
     allow_downsampling = boolean(default=True)
@@ -58,9 +61,7 @@
 [behavior_pp]
 
     [[general]]
-    invert_behavior = boolean(default=False)
-    behavior_to_segment = string_list(default=list('rest'))
-    behavior_tag = string_list(default=list('rest'))
+    save = boolean(default=True)
 
     [[merge_close_peaks]]
     peak_merging_distance = integer(default=4)
@@ -80,6 +81,8 @@
     fst = float(default=8.0)
 
     [[peri_event]]
+    extract_time_before_event = integer(default=10)
+    extract_time_after_event = integer(default=10)
     time_before_event = integer(default=10)
     time_after_event = integer(default=10)
     plot = boolean(default=True)

@@ -37,15 +37,57 @@ class Coordinates:
 
 
 # Setting the working directory and the related files
-folder_tag = "210408_353_Photo"
-experiment_tag = "210408"
+
+folder_tag = "210414_353_Opto_5mW_30s_Cntrl"
+experiment_tag = "210414"
 # mice = ["130_{}".format(str(i).zfill(4)) for i in np.arange(0, 11, 1)]
 # mice = ["164_0029"]
 # tags = [2, 4, 19, 20, 21, 23, 25, 27, 28, 30, 31]
 # mice = ["193_{}".format(str(i).zfill(4)) for i in tags]
-tags = [0]
+tags = [0, 1, 2, 3, 4, 5]
 mice = ["353_{}".format(str(i).zfill(4)) for i in tags]
-# mice = ["193_0019"]
+
+import logging
+import os
+from dataclasses import dataclass
+
+import matplotlib.pyplot as plt
+
+import moviepy.editor as mpy
+import numpy as np
+
+from fiber_photometry_analysis import utilities as utils
+from fiber_photometry_analysis import photometry_io
+from fiber_photometry_analysis import generic_signal_processing as gen_preproc
+from fiber_photometry_analysis import signal_preprocessing as preproc
+from fiber_photometry_analysis import behavior_preprocessing as behav_preproc
+from fiber_photometry_analysis import mask_operations as mask_op
+from fiber_photometry_analysis import parameters
+from fiber_photometry_analysis import plot
+from fiber_photometry_analysis import video_plot as v_plot
+from fiber_photometry_analysis.behavior_preprocessing import set_ranges_high
+from fiber_photometry_analysis.logger import init_logging
+from fiber_photometry_analysis.logger import config as logger_config
+
+
+@dataclass
+class Coordinates:
+    x1: int
+    x2: int
+    y1: int
+    y2: int
+
+
+# Setting the working directory and the related files
+
+folder_tag = "210414_353_Opto_5mW_30s_Cntrl"
+experiment_tag = "210414"
+# mice = ["130_{}".format(str(i).zfill(4)) for i in np.arange(0, 11, 1)]
+# mice = ["164_0029"]
+# tags = [2, 4, 19, 20, 21, 23, 25, 27, 28, 30, 31]
+# mice = ["193_{}".format(str(i).zfill(4)) for i in tags]
+tags = [0, 1, 2, 3, 4, 5]
+mice = ["353_{}".format(str(i).zfill(4)) for i in tags]
 
 # base_directory = "/Users/tomtop/Desktop/Photometry"
 # working_directory = os.path.join(base_directory, "{}".format(folder_tag))
@@ -55,110 +97,280 @@ mice = ["353_{}".format(str(i).zfill(4)) for i in tags]
 base_directory = "/Users/tomtop/Desktop/Photometry"
 
 for m in mice:
-    invert = True
     mouse = m
     working_directory = os.path.join(base_directory, "{}/{}".format(folder_tag, mouse))
-    config = parameters.load_config(working_directory, experiment_tag, mouse, overwrite=True)
+    ff_config = parameters.load_config(working_directory, experiment_tag, mouse, overwrite=True)
 
-    photometry_data_test = photometry_io.save_dataframe_to_feather(config["general"]["photometry_file"], working_directory)
-    photometry_data = preproc.load_photometry_data(photometry_data_test, config, recompute=True)
-    params["photometry_data"] = photometry_data  # Adds a new parameter containing all the photometry data
+    photometry_data_test = photometry_io.save_dataframe_to_feather(ff_config["general"]["photometry_file"], working_directory)
+    photometry_data = preproc.load_photometry_data(photometry_data_test, ff_config, recompute=True)
+    ff_config["photometry_data"] = photometry_data  # Adds a new parameter containing all the photometry data
 
-    if invert:
-        params["save_dir_behavior"] = os.path.join(params["save_dir"],
-                                                   "Inverted_" + "_".join(params["behavior_to_segment"]))
-    else:
-        params["save_dir_behavior"] = os.path.join(params["save_dir"], "_".join(params["behavior_to_segment"]))
-    if not os.path.exists(params["save_dir_behavior"]):
-        os.mkdir(params["save_dir_behavior"])
-    behavior_bouts = behav_preproc.extract_behavior_data(behavior_manual_file,
-                                                         params["behavior_to_segment"])  # REFACTOR: replace by ranges
+    for bts, bt, ib in zip(ff_config["general"]["general"]["behavior_to_segment"],
+                           ff_config["general"]["general"]["behavior_tag"],
+                           ff_config["general"]["general"]["invert_behavior"],):
+        print("Processing behavior: {} for animal {}".format(bts, m))
 
-    # params["resolution_data"] = behav_preproc.estimate_behavior_time_resolution(starts, ends)
-    params["resolution_data"] = params["recording_sampling_rate"]
-    n_points = behav_preproc.estimate_length_bool_map(params["recording_duration"], params["resolution_data"])
-    behavior_bouts_matched = behav_preproc.match_time_behavior_to_photometry(behavior_bouts,
-                                                                             params["recording_duration"],
-                                                                             params["video_duration"],
-                                                                             params["resolution_data"])
-    bool_map = set_ranges_high(np.zeros(n_points), behavior_bouts_matched)
-    break
-    trimmed_bool_map = behav_preproc.trim_behavioral_data(bool_map,
-                                                          params["crop_start"],
-                                                          params["crop_end"],
-                                                          params["resolution_data"])
+        if ib:
+            ff_config["general"]["behavior_saving_directory"] = os.path.join(ff_config["general"]["plot_directory"],
+                                                                             "Inverted_{}_pmd{}_mbl{}"
+                                                                             .format(bts,
+                                                                                     ff_config["behavior_pp"]["merge_close_peaks"]["peak_merging_distance"],
+                                                                                     ff_config["behavior_pp"]["filter_small_events"]["minimal_bout_length"]))
+        else:
+            ff_config["general"]["behavior_saving_directory"] = os.path.join(ff_config["general"]["plot_directory"],
+                                                                             "{}_pmd{}_mbl{}"
+                                                                             .format(bts,
+                                                                                     ff_config["behavior_pp"]["merge_close_peaks"]["peak_merging_distance"],
+                                                                                     ff_config["behavior_pp"]["filter_small_events"]["minimal_bout_length"]))
+        if not os.path.exists(ff_config["general"]["behavior_saving_directory"]):
+            os.mkdir(ff_config["general"]["behavior_saving_directory"])
+        behavior_bouts = behav_preproc.extract_behavior_data(ff_config["general"]["behavior_manual"], bts)
 
-    # INVERSION TO LOOK FOR SMALL WAKE PERIODS
-    if invert:
-        trimmed_bool_map = 1 - trimmed_bool_map
+        for beh in list(behavior_bouts.keys()):
+            if behavior_bouts[beh].size > 0:
 
-    # filtered_bool_map = mask_op.filter_large_events(trimmed_bool_map, 100*241)
-    filtered_bool_map = trimmed_bool_map
+                ff_config["signal_pp"]["general"]["resolution_data"] = ff_config["general"]["recording_sampling_rate"]
+                # params["resolution_data"] = behav_preproc.estimate_behavior_time_resolution(starts, ends)
+                n_points = behav_preproc.estimate_length_bool_map(ff_config["general"]["recording_duration"],
+                                                                  ff_config["signal_pp"]["general"]["resolution_data"])
+                behavior_bouts_matched = behav_preproc.match_time_behavior_to_photometry(behavior_bouts,
+                                                                                         ff_config["general"]["recording_duration"],
+                                                                                         ff_config["general"]["video_duration"],
+                                                                                         ff_config["signal_pp"]["general"]["resolution_data"])
+                bool_map = set_ranges_high(np.zeros(n_points), behavior_bouts_matched)
+                trimmed_bool_map = behav_preproc.trim_behavioral_data(bool_map,
+                                                                      ff_config["signal_pp"]["general"]["crop_start"],
+                                                                      ff_config["signal_pp"]["general"]["crop_end"],
+                                                                      ff_config["signal_pp"]["general"]["resolution_data"])
 
-    plot.check_delta_f_with_behavior(filtered_bool_map, params, fig_name="behavior_overlay_raw",
-                                     extra_legend_label=None, video_time=True)
+                # INVERSION TO LOOK FOR SMALL WAKE PERIODS
+                if ib:
+                    trimmed_bool_map = 1 - trimmed_bool_map
 
-    merged_bool_map = mask_op.merge_neighboring_events(filtered_bool_map, max_bout_gap)
+                # filtered_bool_map = mask_op.filter_large_events(trimmed_bool_map, 100*241)
+                filtered_bool_map = trimmed_bool_map
 
-    plot.check_delta_f_with_behavior([filtered_bool_map, merged_bool_map], params, fig_name="behavior_overlay_merged",
-                                     zorder=[0, 1], extra_legend_label="Merged", video_time=True)
+                plot.check_delta_f_with_behavior(filtered_bool_map, ff_config,
+                                                 behavior_tag=ff_config["general"]["general"]["behavior_tag"],
+                                                 fig_name="behavior_overlay_raw",
+                                                 extra_legend_label=None,
+                                                 video_time=True,
+                                                 plot=ff_config["behavior_pp"]["general"]["plot"],
+                                                 save=ff_config["behavior_pp"]["general"]["save"])
 
-    large_events_bool_map = mask_op.filter_small_events(merged_bool_map, minimal_bout_length)
+                merged_bool_map = mask_op.merge_neighboring_events(filtered_bool_map,
+                                                                   ff_config["behavior_pp"]["merge_close_peaks"]["peak_merging_distance"]*
+                                                                    ff_config["signal_pp"]["general"]["resolution_data"])
 
-    plot.check_delta_f_with_behavior([large_events_bool_map, merged_bool_map], params,
-                                     fig_name="behavior_overlay_large_events",
-                                     zorder=[0, 1], extra_legend_label="Small bouts", video_time=True)
+                plot.check_delta_f_with_behavior([filtered_bool_map, merged_bool_map], ff_config,
+                                                 behavior_tag=ff_config["general"]["general"]["behavior_tag"],
+                                                 fig_name="behavior_overlay_merged",
+                                                 zorder=[0, 1],
+                                                 extra_legend_label="Merged",
+                                                 video_time=True,
+                                                 plot=ff_config["behavior_pp"]["merge_close_peaks"]["plot"],
+                                                 save=ff_config["behavior_pp"]["merge_close_peaks"]["save"])
 
-    params["peri_event"]["graph_distance_pre"] = 15
-    params["peri_event"]["graph_distance_post"] = 15
-    edge_filtered_bool_map = mask_op.filter_edge_events(large_events_bool_map, params["resolution_data"],
-                                                        params["peri_event"]["graph_distance_pre"],
-                                                        params["peri_event"]["graph_distance_post"])
+                large_events_bool_map = mask_op.filter_small_events(merged_bool_map,
+                                                                    ff_config["behavior_pp"]["filter_small_events"]["minimal_bout_length"]*
+                                                                    ff_config["signal_pp"]["general"]["resolution_data"])
 
-    plot.check_delta_f_with_behavior([edge_filtered_bool_map, large_events_bool_map], params,
-                                     fig_name="behavior_overlay_filtered_edge_events",
-                                     zorder=[0, 1], extra_legend_label="Filtered edge events", video_time=True)
+                plot.check_delta_f_with_behavior([large_events_bool_map, merged_bool_map], ff_config,
+                                                 behavior_tag=ff_config["general"]["general"]["behavior_tag"],
+                                                 fig_name="behavior_overlay_large_events",
+                                                 zorder=[0, 1], extra_legend_label="Small bouts",
+                                                 video_time=True,
+                                                 plot=ff_config["behavior_pp"]["filter_small_events"]["plot"],
+                                                 save=ff_config["behavior_pp"]["filter_small_events"]["save"])
 
-    trimmed_duration = len(trimmed_bool_map) / params["resolution_data"]
-    new_sr = gen_preproc.round_to_closest_ten(params["recording_sampling_rate"])
-    # new_sr = 241
-    new_x = gen_preproc.generate_new_x(new_sr, trimmed_duration)
-    interpolated_delta_f = gen_preproc.interpolate_signal(params["photometry_data"]["dFF"]["x"],
-                                                          params["photometry_data"]["dFF"]["dFF"],
-                                                          new_x)
+                edge_filtered_bool_map = mask_op.filter_edge_events(large_events_bool_map, ff_config["signal_pp"]["general"]["resolution_data"],
+                                                                    ff_config["plotting"]["peri_event"]["extract_time_before_event"],
+                                                                    ff_config["plotting"]["peri_event"]["extract_time_after_event"])
 
-    filtered_bool_map_new = edge_filtered_bool_map[:len(interpolated_delta_f)]
-    # print(len(interpolated_delta_f))
-    # print(len(filtered_bool_map_new))
-    # import pandas as pd
-    # df_feather = pd.DataFrame({"time(s)" : new_x,
-    #                           "delta_f" : interpolated_delta_f,
-    #                           "behavior_map" : filtered_bool_map_new,
-    #                           })
-    # df_feather.to_feather(os.path.join("/Users/tomtop/Desktop", "data_{}_{}.feather".format(experiment, mouse)))
-    # plt.plot(new_x, interpolated_delta_f)
-    # plt.plot(new_x, filtered_bool_map_new)
+                plot.check_delta_f_with_behavior([edge_filtered_bool_map, large_events_bool_map], ff_config,
+                                                 behavior_tag=ff_config["general"]["general"]["behavior_tag"],
+                                                 fig_name="behavior_overlay_filtered_edge_events",
+                                                 zorder=[0, 1], extra_legend_label="Filtered edge events",
+                                                 video_time=True,
+                                                 plot=ff_config["behavior_pp"]["general"]["plot"],
+                                                 save=ff_config["behavior_pp"]["general"]["save"])
 
-    start_behavioral_bouts = mask_op.find_start_points_events(edge_filtered_bool_map)
-    length_behavioral_bouts = mask_op.get_length_events(edge_filtered_bool_map, params["resolution_data"])
+                trimmed_duration = len(trimmed_bool_map) / ff_config["signal_pp"]["general"]["resolution_data"]
+                new_sr = gen_preproc.round_to_closest_ten(ff_config["general"]["recording_sampling_rate"])
+                # new_sr = 241
+                new_x = gen_preproc.generate_new_x(new_sr, trimmed_duration)
+                interpolated_delta_f = gen_preproc.interpolate_signal(ff_config["photometry_data"]["dFF"]["x"],
+                                                                      ff_config["photometry_data"]["dFF"]["dFF"],
+                                                                      new_x)
 
-    delta_f_around_bouts = behav_preproc.extract_peri_event_photometry_data(interpolated_delta_f, new_sr,
-                                                                            start_behavioral_bouts, params)
-    delta_f_around_bouts_ordered, length_bouts_ordered = behav_preproc.reorder_by_bout_size(delta_f_around_bouts,
-                                                                                            length_behavioral_bouts,
-                                                                                            rising=False)
-    params["peri_event"]["graph_display_pre"] = 15
-    params["peri_event"]["graph_display_post"] = 15
-    perievent_metadata = plot.peri_event_plot(delta_f_around_bouts_ordered,
-                                              length_bouts_ordered,
-                                              new_sr,
-                                              params,
-                                              cmap="inferno",  # cividis, viridis, inferno
-                                              style="individual",  # individual, average
-                                              individual_colors=False,
-                                              )
+                filtered_bool_map_new = edge_filtered_bool_map[:len(interpolated_delta_f)]
 
-    photometry_io.save_perievent_data_to_pickle(perievent_metadata, experiment_tag, mouse, params)
+                start_behavioral_bouts = mask_op.find_start_points_events(edge_filtered_bool_map)
+                length_behavioral_bouts = mask_op.get_length_events(edge_filtered_bool_map, ff_config["signal_pp"]["general"]["resolution_data"])
+
+                delta_f_around_bouts = behav_preproc.extract_peri_event_photometry_data(interpolated_delta_f, new_sr,
+                                                                                        start_behavioral_bouts, ff_config)
+                delta_f_around_bouts_ordered, length_bouts_ordered = behav_preproc.reorder_by_bout_size(delta_f_around_bouts,
+                                                                                                        length_behavioral_bouts,
+                                                                                                        rising=False)
+
+                if not delta_f_around_bouts_ordered.size == 0:
+                    perievent_metadata = plot.peri_event_plot(delta_f_around_bouts_ordered,
+                                                              length_bouts_ordered,
+                                                              new_sr,
+                                                              ff_config,
+                                                              behavior_tag=ff_config["general"]["general"]["behavior_tag"],
+                                                              cmap="inferno",  # cividis, viridis, inferno
+                                                              style="average",  # individual, average
+                                                              individual_colors=False,
+                                                              )
+
+                    photometry_io.save_perievent_data_to_pickle(perievent_metadata, experiment_tag, mouse, ff_config)
+
+            else:
+                print("Bypassing behavior: {} for animal {}. Reason: Empty".format(bts, m))
+
+                
+# base_directory = "/Users/tomtop/Desktop/Photometry"
+# working_directory = os.path.join(base_directory, "{}".format(folder_tag))
+# utils.replace_photometry_files_into_folders(working_directory)
+# utils.rename_video_names(working_directory)
+
+base_directory = "/Users/tomtop/Desktop/Photometry"
+
+for m in mice:
+    mouse = m
+    working_directory = os.path.join(base_directory, "{}/{}".format(folder_tag, mouse))
+    ff_config = parameters.load_config(working_directory, experiment_tag, mouse, overwrite=True)
+
+    photometry_data_test = photometry_io.save_dataframe_to_feather(ff_config["general"]["photometry_file"], working_directory)
+    photometry_data = preproc.load_photometry_data(photometry_data_test, ff_config, recompute=True)
+    ff_config["photometry_data"] = photometry_data  # Adds a new parameter containing all the photometry data
+
+    for bts, bt, ib in zip(ff_config["general"]["general"]["behavior_to_segment"],
+                           ff_config["general"]["general"]["behavior_tag"],
+                           ff_config["general"]["general"]["invert_behavior"],):
+        print("Processing behavior: {} for animal {}".format(bts, m))
+
+        if ib:
+            ff_config["general"]["behavior_saving_directory"] = os.path.join(ff_config["general"]["plot_directory"],
+                                                                             "Inverted_{}_pmd{}_mbl{}"
+                                                                             .format(bts,
+                                                                                     ff_config["behavior_pp"]["merge_close_peaks"]["peak_merging_distance"],
+                                                                                     ff_config["behavior_pp"]["filter_small_events"]["minimal_bout_length"]))
+        else:
+            ff_config["general"]["behavior_saving_directory"] = os.path.join(ff_config["general"]["plot_directory"],
+                                                                             "{}_pmd{}_mbl{}"
+                                                                             .format(bts,
+                                                                                     ff_config["behavior_pp"]["merge_close_peaks"]["peak_merging_distance"],
+                                                                                     ff_config["behavior_pp"]["filter_small_events"]["minimal_bout_length"]))
+        if not os.path.exists(ff_config["general"]["behavior_saving_directory"]):
+            os.mkdir(ff_config["general"]["behavior_saving_directory"])
+        behavior_bouts = behav_preproc.extract_behavior_data(ff_config["general"]["behavior_manual"], bts)
+
+        for beh in list(behavior_bouts.keys()):
+            if behavior_bouts[beh].size > 0:
+
+                ff_config["signal_pp"]["general"]["resolution_data"] = ff_config["general"]["recording_sampling_rate"]
+                # params["resolution_data"] = behav_preproc.estimate_behavior_time_resolution(starts, ends)
+                n_points = behav_preproc.estimate_length_bool_map(ff_config["general"]["recording_duration"],
+                                                                  ff_config["signal_pp"]["general"]["resolution_data"])
+                behavior_bouts_matched = behav_preproc.match_time_behavior_to_photometry(behavior_bouts,
+                                                                                         ff_config["general"]["recording_duration"],
+                                                                                         ff_config["general"]["video_duration"],
+                                                                                         ff_config["signal_pp"]["general"]["resolution_data"])
+                bool_map = set_ranges_high(np.zeros(n_points), behavior_bouts_matched)
+                trimmed_bool_map = behav_preproc.trim_behavioral_data(bool_map,
+                                                                      ff_config["signal_pp"]["general"]["crop_start"],
+                                                                      ff_config["signal_pp"]["general"]["crop_end"],
+                                                                      ff_config["signal_pp"]["general"]["resolution_data"])
+
+                # INVERSION TO LOOK FOR SMALL WAKE PERIODS
+                if ib:
+                    trimmed_bool_map = 1 - trimmed_bool_map
+
+                # filtered_bool_map = mask_op.filter_large_events(trimmed_bool_map, 100*241)
+                filtered_bool_map = trimmed_bool_map
+
+                plot.check_delta_f_with_behavior(filtered_bool_map, ff_config,
+                                                 behavior_tag=ff_config["general"]["general"]["behavior_tag"],
+                                                 fig_name="behavior_overlay_raw",
+                                                 extra_legend_label=None,
+                                                 video_time=True,
+                                                 plot=ff_config["behavior_pp"]["general"]["plot"],
+                                                 save=ff_config["behavior_pp"]["general"]["save"])
+
+                merged_bool_map = mask_op.merge_neighboring_events(filtered_bool_map,
+                                                                   ff_config["behavior_pp"]["merge_close_peaks"]["peak_merging_distance"]*
+                                                                    ff_config["signal_pp"]["general"]["resolution_data"])
+
+                plot.check_delta_f_with_behavior([filtered_bool_map, merged_bool_map], ff_config,
+                                                 behavior_tag=ff_config["general"]["general"]["behavior_tag"],
+                                                 fig_name="behavior_overlay_merged",
+                                                 zorder=[0, 1],
+                                                 extra_legend_label="Merged",
+                                                 video_time=True,
+                                                 plot=ff_config["behavior_pp"]["merge_close_peaks"]["plot"],
+                                                 save=ff_config["behavior_pp"]["merge_close_peaks"]["save"])
+
+                large_events_bool_map = mask_op.filter_small_events(merged_bool_map,
+                                                                    ff_config["behavior_pp"]["filter_small_events"]["minimal_bout_length"]*
+                                                                    ff_config["signal_pp"]["general"]["resolution_data"])
+
+                plot.check_delta_f_with_behavior([large_events_bool_map, merged_bool_map], ff_config,
+                                                 behavior_tag=ff_config["general"]["general"]["behavior_tag"],
+                                                 fig_name="behavior_overlay_large_events",
+                                                 zorder=[0, 1], extra_legend_label="Small bouts",
+                                                 video_time=True,
+                                                 plot=ff_config["behavior_pp"]["filter_small_events"]["plot"],
+                                                 save=ff_config["behavior_pp"]["filter_small_events"]["save"])
+
+                edge_filtered_bool_map = mask_op.filter_edge_events(large_events_bool_map, ff_config["signal_pp"]["general"]["resolution_data"],
+                                                                    ff_config["plotting"]["peri_event"]["extract_time_before_event"],
+                                                                    ff_config["plotting"]["peri_event"]["extract_time_after_event"])
+
+                plot.check_delta_f_with_behavior([edge_filtered_bool_map, large_events_bool_map], ff_config,
+                                                 behavior_tag=ff_config["general"]["general"]["behavior_tag"],
+                                                 fig_name="behavior_overlay_filtered_edge_events",
+                                                 zorder=[0, 1], extra_legend_label="Filtered edge events",
+                                                 video_time=True,
+                                                 plot=ff_config["behavior_pp"]["general"]["plot"],
+                                                 save=ff_config["behavior_pp"]["general"]["save"])
+
+                trimmed_duration = len(trimmed_bool_map) / ff_config["signal_pp"]["general"]["resolution_data"]
+                new_sr = gen_preproc.round_to_closest_ten(ff_config["general"]["recording_sampling_rate"])
+                # new_sr = 241
+                new_x = gen_preproc.generate_new_x(new_sr, trimmed_duration)
+                interpolated_delta_f = gen_preproc.interpolate_signal(ff_config["photometry_data"]["dFF"]["x"],
+                                                                      ff_config["photometry_data"]["dFF"]["dFF"],
+                                                                      new_x)
+
+                filtered_bool_map_new = edge_filtered_bool_map[:len(interpolated_delta_f)]
+
+                start_behavioral_bouts = mask_op.find_start_points_events(edge_filtered_bool_map)
+                length_behavioral_bouts = mask_op.get_length_events(edge_filtered_bool_map, ff_config["signal_pp"]["general"]["resolution_data"])
+
+                delta_f_around_bouts = behav_preproc.extract_peri_event_photometry_data(interpolated_delta_f, new_sr,
+                                                                                        start_behavioral_bouts, ff_config)
+                delta_f_around_bouts_ordered, length_bouts_ordered = behav_preproc.reorder_by_bout_size(delta_f_around_bouts,
+                                                                                                        length_behavioral_bouts,
+                                                                                                        rising=False)
+
+                if not delta_f_around_bouts_ordered.size == 0:
+                    perievent_metadata = plot.peri_event_plot(delta_f_around_bouts_ordered,
+                                                              length_bouts_ordered,
+                                                              new_sr,
+                                                              ff_config,
+                                                              behavior_tag=ff_config["general"]["general"]["behavior_tag"],
+                                                              cmap="inferno",  # cividis, viridis, inferno
+                                                              style="average",  # individual, average
+                                                              individual_colors=False,
+                                                              )
+
+                    photometry_io.save_perievent_data_to_pickle(perievent_metadata, experiment_tag, mouse, ff_config)
+
+            else:
+                print("Bypassing behavior: {} for animal {}. Reason: Empty".format(bts, m))
 
 plot.peri_event_bar_plot(delta_f_around_bouts_ordered, new_sr, params, duration_pre=3,
                          duration_post=3)

@@ -137,7 +137,7 @@ def load_workspace(working_directory, experiment, mouse):
                  "color_video": get_generic_file_path("color_video", "mp4"),
                  "depth_video": get_generic_file_path("depth_video", "mp4"),
                  "behavior_automatic": get_generic_file_path("behavior_automatic", "npy"),
-                 "behavior_manual": get_generic_file_path("behavior_manual", "xls"),
+                 "behavior_manual": get_generic_file_path("behavior_manual", "xlsx"),
                  }
 
     workspace_directories = create_workspace(working_directory)
@@ -174,7 +174,7 @@ def generate_xticks_and_labels(time, params, video_time=False):  # FIXME: extrac
         step_labels = step_ticks / 60
         xticklabels = np.arange(0, ((time - (time % 60)) / 60) + step_labels, step_labels)
         if video_time:
-            xticklabels = xticklabels + (params["crop_start"] / 60)
+            xticklabels = xticklabels + (params["signal_pp"]["general"]["crop_start"] / 60)
         unit = "min"
     else:
         if time >= 10:
@@ -185,7 +185,7 @@ def generate_xticks_and_labels(time, params, video_time=False):  # FIXME: extrac
             xticks = np.arange(0, time + step_ticks, step_ticks)
         xticklabels = xticks
         if video_time:
-            xticklabels = xticklabels + params["crop_start"]
+            xticklabels = xticklabels + params["signal_pp"]["general"]["crop_start"]
         unit = "sec"
     
     return xticks, xticklabels, unit
@@ -202,7 +202,6 @@ def generate_yticks(source, delta):
                 y_max (float) = the maximum value of the yticks
                 round_factor (float) = the yticks step
     """
-    
     y_max = offset(max(source), delta, "+")
     y_min = offset(min(source), delta, "-")
     

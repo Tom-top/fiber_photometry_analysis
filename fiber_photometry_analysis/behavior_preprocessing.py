@@ -66,13 +66,18 @@ def extract_behavior_data(file_path, behaviour_names, transpose=True):
         df.columns = column_names
         df = df.drop(0)
         df = io.reset_dataframe_index(df)
-    for beh in behaviour_names:
-        if isinstance(beh, list):
-            starts, ends = merge_behavioral_bouts(df, beh)
-        else :
-            starts = extract_column(df, "tStart{0}".format(beh))
-            ends = extract_column(df, "tEnd{0}".format(beh))
-        result[beh] = np.column_stack((starts, ends))
+    if isinstance(behaviour_names, str):
+        starts = extract_column(df, "tStart{0}".format(behaviour_names[0].upper() + behaviour_names[1:]))
+        ends = extract_column(df, "tEnd{0}".format(behaviour_names[0].upper() + behaviour_names[1:]))
+        result[behaviour_names] = np.column_stack((starts, ends))
+    elif isinstance(behaviour_names, list):
+        for beh in behaviour_names:
+            if isinstance(beh, list):
+                starts, ends = merge_behavioral_bouts(df, beh)
+            else :
+                starts = extract_column(df, "tStart{0}".format(beh))
+                ends = extract_column(df, "tEnd{0}".format(beh))
+            result[beh] = np.column_stack((starts, ends))
     return result
 
 
@@ -281,8 +286,9 @@ def set_ranges_high(src_arr, ranges):
     :return:
     """
     out_arr = src_arr.copy()
-    for s, e in ranges:
-        out_arr[int(s):int(e)] = 1
+    for beh, data in ranges.items():
+        for s, e in data:
+            out_arr[int(s):int(e)] = 1
     return out_arr
 
 
@@ -325,10 +331,10 @@ def extract_peri_event_photometry_data(interpolated_signal, interpolated_signal_
     :return: df_around_peaks (list) = list of photometry data at the moment when the animal behaves
     """
     df_around_peaks = []
-    n_pnts_pre = (params["peri_event"]["graph_distance_pre"] + 0.5) * interpolated_signal_sampling_rate
-    n_pnts_post = (params["peri_event"]["graph_distance_post"] + 0.5) * interpolated_signal_sampling_rate
+    n_pnts_pre = (params["plotting"]["peri_event"]["time_before_event"] + 0.5) * interpolated_signal_sampling_rate
+    n_pnts_post = (params["plotting"]["peri_event"]["time_after_event"] + 0.5) * interpolated_signal_sampling_rate
     for s in start_bouts:
-        bout_start = (s/params["resolution_data"]) * interpolated_signal_sampling_rate
+        bout_start = (s/params["signal_pp"]["general"]["resolution_data"]) * interpolated_signal_sampling_rate
         start_idx = int(bout_start - n_pnts_pre)
         end_idx = int(bout_start + n_pnts_post)
         df_around_peaks.append(interpolated_signal[start_idx:end_idx])

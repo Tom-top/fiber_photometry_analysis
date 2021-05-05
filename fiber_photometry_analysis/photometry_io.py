@@ -136,7 +136,7 @@ def convert_to_feather(file, recompute=True, **kwargs):
 
 
 def save_perievent_data_to_pickle(metadata, experiment, mouse, params):
-    file_saving_path = os.path.join(params["save_dir_behavior"], "perievent_data_{}_{}.pickle".format(experiment, mouse))
+    file_saving_path = os.path.join(params["general"]["behavior_saving_directory"], "perievent_data_{}_{}.pickle".format(experiment, mouse))
     with open(file_saving_path, 'wb') as f:
         pickle.dump(metadata, f)
 

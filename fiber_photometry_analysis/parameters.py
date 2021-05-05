@@ -25,7 +25,7 @@ def load_config(working_directory, experiment_tag, animal_tag, overwrite=True):
         print("No config file was detected, generated default config")
     configspec = ConfigObj(configspec_file_path, encoding='UTF8',
                            list_values=False, _inspec=True, stringify=True)
-    config = ConfigObj(config_file_path, configspec=configspec)
+    config = ConfigObj(config_file_path, unrepr=True, configspec=configspec)
     config.validate(validate.Validator(), preserve_errors=True, copy=True)
 
     workspace = utils.load_workspace(working_directory, experiment_tag, animal_tag)

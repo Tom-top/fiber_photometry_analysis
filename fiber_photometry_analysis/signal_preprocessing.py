@@ -146,8 +146,8 @@ def find_baseline_and_crop(x, isosbestic, calcium, params):  # WARNING: does 2 t
                                                                  params["signal_pp"]["baseline_determination"]["als_lambda"],
                                                                  params["signal_pp"]["baseline_determination"]["als_pval"])
     else:
-        isosbestic_fc = peakutils.baseline(isosbestic, deg=4)
-        calcium_fc = peakutils.baseline(calcium, deg=4)
+        isosbestic_fc = peakutils.baseline(isosbestic, deg=6, max_it=300, tol=1e-3)
+        calcium_fc = peakutils.baseline(calcium, deg=6, max_it=300, tol=1e-3)
         
     return x, isosbestic, calcium, isosbestic_fc, calcium_fc
 
@@ -171,19 +171,19 @@ d isosbestic signal
     return isosbestic_corrected, calcium_corrected
 
 
-def standardization(isosbestic, calcium, standardise):
+def standardization(isosbestic, calcium, standardize):
     """
     Function that performs the standardization of the corrected
     signals and displays it in a plot.
 
     :param np.array isosbestic: The corrected isosbestic signal
     :param np.array calcium: The baseline corrected calcium signal
-    :param bool standardise: Whether to actually do the standardisation
+    :param bool standardize: Whether to actually do the standardisation
     :return: isosbestic_standardized : The standardized isosbestic signal
              calcium_standardized : The standardized calcium signal
     :rtype: (np.array, np.array)
     """
-    if standardise:
+    if standardize:
         logging.info("\nStarting standardization for Isosbestic and Calcium signals !")
     
         isosbestic_standardized = (isosbestic - np.median(isosbestic)) / np.std(isosbestic)  # standardization correction for isosbestic
@@ -220,8 +220,9 @@ def interchannel_regression(isosbestic, calcium, regression_type):
     reg.fit(isosbestic.reshape(n, 1), calcium.reshape(n, 1))
     # isosbestic_fitted = (abs(reg.coef_[0])*isosbestic.reshape(n,1)+reg.intercept_[0]).reshape(n,)
     isosbestic_fitted = reg.predict(isosbestic.reshape(n, 1)).reshape(n,)
-        
-    return isosbestic_fitted
+
+    return isosbestic
+    # return isosbestic_fitted
 
 
 def compute_delta_f(isosbestic, calcium):
@@ -256,48 +257,62 @@ def load_photometry_data(photometry_data_file_path, params, recompute=True):
     pickle_path = os.path.join(dir_name, "processed_photometry_data.pickle".format(file_name))
     if recompute:
         x0, isosbestic, calcium = extract_raw_data(photometry_data_file_path, params)
-        if params["signal_pp"]["raw_data"]["plot"]:
+        if params["signal_pp"]["general"]["plot"]:
             plot_data_pair(calcium, isosbestic, x0, 'raw', params, units='mV', to_milli=True,
+                           plot=params["signal_pp"]["raw_data"]["plot"],
                            save=params["signal_pp"]["raw_data"]["save"])
 
         x1, isosbestic_smoothed, calcium_smoothed = smooth(x0, isosbestic, calcium,
                                                            win_len=params["signal_pp"]["smoothing"]["smoothing_window"])
-        if params["signal_pp"]["smoothing"]["plot"]:
+        if params["signal_pp"]["general"]["plot"]:
             plot_data_pair(calcium_smoothed, isosbestic_smoothed, x1, 'smoothed', params, to_milli=True,
+                           plot=params["signal_pp"]["smoothing"]["plot"],
                            save=params["signal_pp"]["smoothing"]["save"])
 
         x2, isosbestic_cropped, calcium_cropped, function_isosbestic, function_calcium = find_baseline_and_crop(x1,
                                                                                                                 isosbestic_smoothed,
                                                                                                                 calcium_smoothed,
                                                                                                                 params)
-        if params["signal_pp"]["baseline_determination"]["plot"]:
-            plot_cropped_data(calcium_cropped, function_calcium, isosbestic_cropped, function_isosbestic, x2, params)
+        if params["signal_pp"]["general"]["plot"]:
+            plot_cropped_data(calcium_cropped, function_calcium, isosbestic_cropped, function_isosbestic, x2, params,
+                              plot=params["signal_pp"]["baseline_determination"]["plot"], save=params["signal_pp"]["baseline_determination"]["save"])
 
         isosbestic_corrected, calcium_corrected = baseline_correction(isosbestic_cropped, calcium_cropped,
                                                                       function_isosbestic, function_calcium)
-        if params["signal_pp"]["baseline_correction"]["plot"]:
+
+
+        if params["signal_pp"]["general"]["plot"]:
             plot_data_pair(calcium_corrected, isosbestic_corrected, x2, 'baseline_corrected', params,
-                           add_zero_line=True, to_milli=True, save=params["signal_pp"]["baseline_correction"]["save"])
+                           add_zero_line=True, to_milli=True, plot=params["signal_pp"]["baseline_correction"]["plot"],
+                           save=params["signal_pp"]["baseline_correction"]["save"])
 
         isosbestic_standardized, calcium_standardized = standardization(isosbestic_corrected, calcium_corrected,
                                                                         params["signal_pp"]["standardization"]["standardize"])
-        if params["signal_pp"]["standardization"]["plot"]:
+        if params["signal_pp"]["general"]["plot"]:
             plot_data_pair(calcium_standardized, isosbestic_standardized, x2, 'Standardized', params,
-                           add_zero_line=True, units='z-score', save=params["signal_pp"]["standardization"]["save"])
+                           add_zero_line=True, units='z-score', plot=params["signal_pp"]["standardization"]["plot"],
+                           save=params["signal_pp"]["standardization"]["save"])
 
         isosbestic_fitted = interchannel_regression(isosbestic_standardized, calcium_standardized,
                                                     regression_type=params["signal_pp"]["inter_channel_regression"]["method"])
-        if params["signal_pp"]["inter_channel_regression"]["plot"]:
+
+
+        if params["signal_pp"]["general"]["plot"]:
             plot_ca_iso_regression(isosbestic_standardized, calcium_standardized, isosbestic_fitted, params,
+                                   plot=params["signal_pp"]["inter_channel_regression"]["plot"],
                                    save=params["signal_pp"]["inter_channel_regression"]["save"])
 
-        if params["signal_pp"]["channel_alignement"]["plot"]:
+
+        if params["signal_pp"]["general"]["plot"]:
             plot_aligned_channels(x2, isosbestic_fitted, calcium_standardized, params,
+                                  plot=params["signal_pp"]["channel_alignement"]["plot"],
                                   save=params["signal_pp"]["channel_alignement"]["save"])
 
         delta_f = compute_delta_f(isosbestic_fitted, calcium_standardized)
-        if params["signal_pp"]["delta_F"]["plot"]:
+
+        if params["signal_pp"]["general"]["plot"]:
             plot_delta_f(calcium_standardized, isosbestic_fitted, x2, params,
+                         plot=params["signal_pp"]["delta_F"]["plot"],
                          save=params["signal_pp"]["delta_F"]["save"])
 
         data = {

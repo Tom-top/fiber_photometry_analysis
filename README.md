@@ -186,6 +186,9 @@ And many more...
 
 * **Thomas TOPILKO**
 thomas.topilko@gmail.com
+* **Charly ROUSSEAU**
+* **Grace HOUSER**
+gah021792@gmail.com
 
 ## License
 

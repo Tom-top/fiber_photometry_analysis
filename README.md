@@ -32,7 +32,7 @@ To install all the pre-requiered libraries for the code to run there are two mai
 	For this, find the _Environement_File.yml_ file and run this in a terminal :
 
   	```
-  	conda env create --n envname -f path/to/the/Environment_File.yml
+  	conda env create -n envname -f path/to/the/Environment_File.yml
 	```
 
 * Installing all the pre-requiered libraries manually :

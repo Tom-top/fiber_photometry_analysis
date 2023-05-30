@@ -1,0 +1,14 @@
+name: fiber_photometry
+channels:
+  - anaconda
+  - conda-forge
+  - defaults
+dependencies:
+  - numpy
+  - matplotlib
+  - pandas
+  - scipy
+  - scikit-learn
+  - seaborn
+  - xlrd
+  - moviepy
